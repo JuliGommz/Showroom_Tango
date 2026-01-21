@@ -150,6 +150,12 @@ public class HUDManager : MonoBehaviour
     {
         switch (newState)
         {
+            case GameState.Lobby:
+            case GameState.Playing:
+                // Hide all end screens when returning to lobby or playing
+                if (gameOverPanel != null) gameOverPanel.SetActive(false);
+                if (victoryPanel != null) victoryPanel.SetActive(false);
+                break;
             case GameState.GameOver:
                 ShowGameOver();
                 break;

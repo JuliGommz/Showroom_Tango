@@ -29,7 +29,7 @@ using FishNet.Object.Synchronizing;
 public class EnemyHealth : NetworkBehaviour
 {
     [Header("Health Settings")]
-    [SerializeField] private int maxHealth = 30;
+    [SerializeField] private int maxHealth = 30; // Default: Chaser=30, Shooter=50 (set in prefab)
 
     [Header("Score Value")]
     [SerializeField] private int scoreValue = 10;
@@ -38,19 +38,60 @@ public class EnemyHealth : NetworkBehaviour
 
     private static int killCount = 0;
 
+    // Spawn protection to prevent instant despawn during network initialization
+    private bool isInitialized = false;
+    private float spawnTime;
+    private const float SPAWN_PROTECTION_DURATION = 0.5f; // 500ms invulnerability
+
     public override void OnStartServer()
     {
         base.OnStartServer();
         currentHealth.Value = maxHealth;
+        spawnTime = Time.time;
+        isInitialized = false;
+        Debug.Log($"[EnemyHealth] {gameObject.name} spawned at {transform.position} with {maxHealth} HP");
+    }
+
+    public override void OnStartClient()
+    {
+        base.OnStartClient();
+        // Mark as initialized once network replication is complete
+        if (!IsServerStarted)
+        {
+            isInitialized = true;
+        }
+    }
+
+    void Update()
+    {
+        // Server: Enable damage after spawn protection period
+        if (IsServerStarted && !isInitialized)
+        {
+            if (Time.time >= spawnTime + SPAWN_PROTECTION_DURATION)
+            {
+                isInitialized = true;
+                Debug.Log($"[EnemyHealth] {gameObject.name} spawn protection ended - now vulnerable");
+            }
+        }
     }
 
     [Server]
     public void TakeDamage(int damage, bool awardScore = true)
     {
+        // Ignore damage during spawn protection
+        if (!isInitialized)
+        {
+            Debug.LogWarning($"[EnemyHealth] {gameObject.name} blocked damage during spawn protection");
+            return;
+        }
+
+        int oldHealth = currentHealth.Value;
         currentHealth.Value -= damage;
+        Debug.Log($"[EnemyHealth] {gameObject.name} took {damage} damage: {oldHealth} -> {currentHealth.Value} HP");
 
         if (currentHealth.Value <= 0)
         {
+            Debug.Log($"[EnemyHealth] {gameObject.name} died (awardScore={awardScore})");
             Die(awardScore);
         }
     }

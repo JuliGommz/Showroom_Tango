@@ -30,6 +30,7 @@ public class EnemyChaser : NetworkBehaviour
 {
     [Header("Movement Settings")]
     [SerializeField] private float moveSpeed = 3f;
+    [SerializeField] private float speedVariation = 0.3f; // ±30% speed randomization
 
     [Header("Damage Settings")]
     [SerializeField] private int collisionDamage = 20;
@@ -39,6 +40,15 @@ public class EnemyChaser : NetworkBehaviour
     private Rigidbody2D rb;
     private float targetUpdateTimer = 0f;
     private const float TARGET_UPDATE_INTERVAL = 0.5f; // Re-evaluate target every 0.5 seconds
+
+    // Movement variety to prevent hordes
+    private float actualMoveSpeed; // Randomized speed per enemy
+    private Vector2 randomOffset; // Small random offset to spread enemies
+
+    // Spawn protection
+    private bool isInitialized = false;
+    private float spawnTime;
+    private const float SPAWN_PROTECTION_DURATION = 0.5f;
 
     void Awake()
     {
@@ -53,12 +63,37 @@ public class EnemyChaser : NetworkBehaviour
     public override void OnStartServer()
     {
         base.OnStartServer();
+        spawnTime = Time.time;
+        isInitialized = false;
+
+        // Randomize movement for variety (prevents hordes)
+        actualMoveSpeed = moveSpeed * Random.Range(1f - speedVariation, 1f + speedVariation);
+
+        // Random offset so enemies don't all converge on exact same point
+        float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+        float offsetDist = Random.Range(0.5f, 1.5f);
+        randomOffset = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * offsetDist;
+
         FindNearestPlayer();
+        Debug.Log($"[EnemyChaser] Spawned with speed {actualMoveSpeed:F2}, offset {randomOffset}");
     }
 
     void FixedUpdate()
     {
         if (!IsServerStarted) return;  // ✅ Use lifecycle property
+
+        // Enable AI after spawn protection
+        if (!isInitialized)
+        {
+            if (Time.time >= spawnTime + SPAWN_PROTECTION_DURATION)
+            {
+                isInitialized = true;
+            }
+            else
+            {
+                return; // Skip AI logic during spawn protection
+            }
+        }
 
         // Performance optimization: Re-evaluate target periodically instead of every frame
         targetUpdateTimer += Time.fixedDeltaTime;
@@ -122,8 +157,12 @@ public class EnemyChaser : NetworkBehaviour
     {
         if (targetPlayer == null) return;
 
-        Vector2 direction = (targetPlayer.position - transform.position).normalized;
-        Vector2 newPosition = Vector2.MoveTowards(rb.position, targetPlayer.position, moveSpeed * Time.fixedDeltaTime);
+        // Move directly toward player + small random offset (prevents perfect stacking)
+        Vector2 targetPosition = (Vector2)targetPlayer.position + randomOffset;
+        Vector2 direction = (targetPosition - rb.position).normalized;
+
+        // Move using randomized speed (creates natural spread)
+        Vector2 newPosition = rb.position + direction * actualMoveSpeed * Time.fixedDeltaTime;
 
         rb.MovePosition(newPosition);
     }
@@ -131,6 +170,7 @@ public class EnemyChaser : NetworkBehaviour
     private void OnCollisionEnter2D(Collision2D collision)
     {
         if (!IsServerStarted) return;
+        if (!isInitialized) return; // Ignore collisions during spawn protection
 
         if (collision.gameObject.CompareTag("Player"))
         {

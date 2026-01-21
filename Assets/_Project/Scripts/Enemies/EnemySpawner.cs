@@ -45,8 +45,8 @@ public class EnemySpawner : NetworkBehaviour
     private readonly SyncVar<int> currentWave = new SyncVar<int>(1);
     [SerializeField] private int maxWaves = 3;
 
-    private int[] waveEnemyCounts = { 30, 50, 80 };
-    private float chaserSpawnWeight = 0.5f;
+    private int[] waveEnemyCounts = { 60, 67, 107 }; // Wave 1: 2x, Waves 2-3: +33%
+    private float chaserSpawnWeight = 0.5f; // 50% Chaser, 50% Shooter
 
     private bool waveActive = false;
 
@@ -86,8 +86,8 @@ public class EnemySpawner : NetworkBehaviour
 
         int totalEnemies = waveEnemyCounts[wave - 1];
 
-        // Spread spawning evenly over 60 seconds with some randomization
-        float waveDuration = 60f;
+        // Spread spawning evenly over 45 seconds with some randomization (reduced from 60s for faster pacing)
+        float waveDuration = 45f;
         float baseInterval = waveDuration / totalEnemies;
 
         for (int i = 0; i < totalEnemies; i++)

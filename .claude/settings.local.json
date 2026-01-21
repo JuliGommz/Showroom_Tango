@@ -8,7 +8,9 @@
       "Bash(Get-ChildItem \"C:\\\\Users\\\\Teilnehmer\\\\Desktop\\\\Schule\\\\PRG\\\\Unity_Projects\\\\Showroom_Tango\\\\Assets\\\\_Project\\\\Scripts\" -Recurse -Filter \"*.cs\")",
       "Bash(Select-Object FullName, LastWriteTime)",
       "Bash(Sort-Object LastWriteTime -Descending)",
-      "Bash(Format-Table -AutoSize)"
+      "Bash(Format-Table -AutoSize)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

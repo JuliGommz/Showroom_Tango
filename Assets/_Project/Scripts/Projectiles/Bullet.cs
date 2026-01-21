@@ -33,24 +33,34 @@ public class Bullet : NetworkBehaviour
 
     [Header("Lifetime")]
     [SerializeField] private float lifetime = 5f;
+    [SerializeField] private float maxRange = 20f; // Maximum travel distance
     [SerializeField] private int damage = 10;
+
+    [Header("Bullet Type")]
+    [SerializeField] private bool isPlayerBullet = true; // True for player bullets, false for enemy bullets
 
     private float lifetimeTimer;
     private BulletPool ownerPool;
+    private Vector3 spawnPosition;
+    private Vector3 movementDirection; // Store initial direction for straight movement
 
     public void Initialize(BulletPool pool)
     {
         ownerPool = pool;
         lifetimeTimer = 0f;
+        spawnPosition = transform.position;
+        // Capture initial direction when bullet spawns (before any rotation)
+        movementDirection = transform.up;
     } 
 
     void FixedUpdate()
     {
         if (!IsServerStarted) return;
 
-        transform.position += transform.up * speed * Time.fixedDeltaTime;
+        // Move in straight line using stored direction (unaffected by visual rotation)
+        transform.position += movementDirection * speed * Time.fixedDeltaTime;
 
-        // Rotate if enabled (for star bullet)
+        // Rotate sprite visually (for star bullet) - this doesn't affect movement direction
         if (rotateWhileMoving)
         {
             transform.Rotate(0, 0, rotationSpeed * Time.fixedDeltaTime);
@@ -59,6 +69,14 @@ public class Bullet : NetworkBehaviour
         // Lifetime check
         lifetimeTimer += Time.fixedDeltaTime;
         if (lifetimeTimer >= lifetime)
+        {
+            ReturnToPool();
+            return;
+        }
+
+        // Range check (prevents hitting enemies off-screen)
+        float distanceTraveled = Vector3.Distance(transform.position, spawnPosition);
+        if (distanceTraveled >= maxRange)
         {
             ReturnToPool();
         }
@@ -73,7 +91,8 @@ public class Bullet : NetworkBehaviour
         }
         else
         {
-            Destroy(gameObject);
+            // Enemy bullets aren't pooled, despawn them
+            ServerManager.Despawn(gameObject);
         }
     }
 
@@ -81,18 +100,34 @@ public class Bullet : NetworkBehaviour
     {
         if (!IsServerStarted) return;
 
-        // Check if hit enemy
-        if (collision.CompareTag("Enemy"))
+        Debug.Log($"[Bullet] {gameObject.name} (isPlayerBullet={isPlayerBullet}) collided with {collision.gameObject.name} (tag: {collision.tag})");
+
+        // Player bullets hit enemies
+        if (isPlayerBullet && collision.CompareTag("Enemy"))
         {
             EnemyHealth enemyHealth = collision.GetComponent<EnemyHealth>();
             if (enemyHealth != null)
             {
                 enemyHealth.TakeDamage(damage);
-                Debug.Log($"[Bullet] Hit enemy for {damage} damage");
+                Debug.Log($"[Bullet] Player bullet hit enemy {collision.gameObject.name} for {damage} damage");
             }
+            ReturnToPool();
+            return;
         }
 
-        // Return bullet to pool after hit
-        ReturnToPool();
+        // Enemy bullets hit players
+        if (!isPlayerBullet && collision.CompareTag("Player"))
+        {
+            PlayerHealth playerHealth = collision.GetComponent<PlayerHealth>();
+            if (playerHealth != null)
+            {
+                playerHealth.ApplyDamage(damage);
+                Debug.Log($"[Bullet] Enemy bullet hit player {collision.gameObject.name} for {damage} damage");
+            }
+            ReturnToPool();
+            return;
+        }
+
+        // Ignore other collisions (enemy bullets don't hit enemies, player bullets don't hit players)
     }
 }

@@ -188,7 +188,7 @@ MonoBehaviour:
   _initializeOrder: 0
   _preventDespawnOnDisconnect: 0
   _defaultDespawnType: 0
-  _initializedTimestamp: -8584331369627508257
+  _initializedTimestamp: -8584325895457336498
   NetworkObserver: {fileID: 0}
   _enablePrediction: 0
   _predictionType: 0
@@ -203,7 +203,7 @@ MonoBehaviour:
   _spectatorInterpolation: 2
   _enableTeleport: 0
   _teleportThreshold: 1
-  <PrefabId>k__BackingField: 6
+  <PrefabId>k__BackingField: 15
   <SpawnableCollectionId>k__BackingField: 0
   <AssetPathHash>k__BackingField: 16043440465040557228
   SceneId: 0
@@ -273,7 +273,7 @@ MonoBehaviour:
   _componentIndexCache: 1
   _addedNetworkObject: {fileID: 4322912711510339584}
   _networkObjectCache: {fileID: 4322912711510339584}
-  maxHealth: 50
+  maxHealth: 30
   scoreValue: 10
 --- !u!114 &7768146599143559276
 MonoBehaviour:
@@ -292,9 +292,10 @@ MonoBehaviour:
   _networkObjectCache: {fileID: 4322912711510339584}
   moveSpeed: 2
   optimalDistance: 6
-  tooCloseDistance: 3
-  tooFarDistance: 7
-  fireRate: 10
+  tooCloseDistance: 4
+  tooFarDistance: 8
+  shootingRange: 15
+  fireRate: 1.2
   bulletPrefab: {fileID: 3681201536365730473, guid: 12e5de0b0463bcc4eab86ef09ceda070, type: 3}
-  bulletSpeed: 6
+  bulletSpeed: 8
   bulletDamage: 10

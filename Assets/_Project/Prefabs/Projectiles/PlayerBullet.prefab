@@ -17,7 +17,7 @@ GameObject:
   - component: {fileID: -4236832302726050424}
   m_Layer: 0
   m_Name: PlayerBullet
-  m_TagString: Untagged
+  m_TagString: Bullet
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -212,6 +212,8 @@ MonoBehaviour:
   rotateWhileMoving: 0
   rotationSpeed: 360
   lifetime: 5
+  maxRange: 20
+  damage: 10
 --- !u!50 &4276505179641626912
 Rigidbody2D:
   serializedVersion: 5

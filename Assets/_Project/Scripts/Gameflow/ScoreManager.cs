@@ -114,6 +114,16 @@ public class ScoreManager : NetworkBehaviour
         OnScoreChanged?.Invoke(next);
     }
 
+    /// <summary>
+    /// Reset score to zero (for restart)
+    /// </summary>
+    [Server]
+    public void ResetScore()
+    {
+        teamScore.Value = 0;
+        Debug.Log("[ScoreManager] Score reset to 0");
+    }
+
     // Public getters
     public int GetTeamScore() => teamScore.Value;
     public int GetKillReward() => killReward;

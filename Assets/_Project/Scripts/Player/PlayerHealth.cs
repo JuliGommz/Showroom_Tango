@@ -129,4 +129,20 @@ public class PlayerHealth : NetworkBehaviour
     public int GetMaxHealth() => maxHealth;
     public bool IsDead() => isDead.Value;
     public bool IsAlive() => !isDead.Value;
+
+    [ServerRpc(RequireOwnership = false)]
+    public void ResetHealthServerRpc()
+    {
+        currentHealth.Value = maxHealth;
+        isDead.Value = false;
+
+        // Re-enable sprites
+        SpriteRenderer[] sprites = GetComponentsInChildren<SpriteRenderer>();
+        foreach (var sprite in sprites)
+        {
+            sprite.enabled = true;
+        }
+
+        Debug.Log($"[PlayerHealth] {gameObject.name} health reset to {maxHealth}");
+    }
 }

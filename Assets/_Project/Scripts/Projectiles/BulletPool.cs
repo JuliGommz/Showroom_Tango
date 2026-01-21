@@ -34,6 +34,13 @@ public class BulletPool : NetworkBehaviour
 
     private Queue<GameObject> pool = new Queue<GameObject>();
 
+    // Diagnostics
+    private int totalSpawned = 0;
+    private int totalReturned = 0;
+    private int totalExpansions = 0;
+    private int nullEncountered = 0;
+    private int activeEncountered = 0;
+
     public override void OnStartServer()
     {
         base.OnStartServer();
@@ -87,8 +94,15 @@ public class BulletPool : NetworkBehaviour
             {
                 // Still active, put it back
                 pool.Enqueue(candidate);
+                activeEncountered++;
+                Debug.LogWarning($"[BulletPool] Encountered active bullet in pool (count: {activeEncountered})");
             }
-            // If candidate is null, it's destroyed - don't re-enqueue
+            else if (candidate == null)
+            {
+                // Destroyed bullet detected
+                nullEncountered++;
+                Debug.LogError($"[BulletPool] DIAGNOSTIC: Destroyed bullet found in pool! Total null encounters: {nullEncountered}");
+            }
 
             attempts++;
         }
@@ -97,7 +111,8 @@ public class BulletPool : NetworkBehaviour
         if (bullet == null)
         {
             bullet = CreateNewBullet();
-            Debug.Log($"[BulletPool] Expanded pool for {bulletPrefab.name}");
+            totalExpansions++;
+            Debug.Log($"[BulletPool] Expanded pool for {bulletPrefab.name} (Total expansions: {totalExpansions})");
         }
 
         // Safe setup now that bullet is guaranteed valid
@@ -106,6 +121,15 @@ public class BulletPool : NetworkBehaviour
         bullet.SetActive(true);
 
         ServerManager.Spawn(bullet);
+        totalSpawned++;
+
+        // Periodic diagnostics every 100 spawns
+        if (totalSpawned % 100 == 0)
+        {
+            int activeBullets = GameObject.FindGameObjectsWithTag("Bullet").Length;
+            Debug.Log($"[BulletPool] DIAGNOSTICS - Spawned: {totalSpawned}, Returned: {totalReturned}, Active: {activeBullets}, Pool: {pool.Count}, Nulls: {nullEncountered}, Expansions: {totalExpansions}");
+        }
+
         return bullet;
     }
 
@@ -115,11 +139,16 @@ public class BulletPool : NetworkBehaviour
     [Server]
     public void ReturnBullet(GameObject bullet)
     {
-        if (bullet == null) return;
+        if (bullet == null)
+        {
+            Debug.LogWarning("[BulletPool] Attempted to return null bullet");
+            return;
+        }
 
         ServerManager.Despawn(bullet, DespawnType.Pool); // ✅ Keeps GameObject alive
         bullet.SetActive(false);
         bullet.transform.SetParent(poolParent);
         pool.Enqueue(bullet);
+        totalReturned++;
     }
 }

@@ -166,20 +166,83 @@ public class GameStateManager : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     public void RequestRestartServerRpc()
     {
-        Debug.Log("[GameStateManager] Restart requested");
-        RestartGame();
+        Debug.Log("[GameStateManager] Restart requested - beginning restart sequence");
+        StartCoroutine(RestartGameSequence());
     }
 
     [Server]
-    private void RestartGame()
+    private System.Collections.IEnumerator RestartGameSequence()
     {
-        // Reload current scene using FishNet's SceneManager for network sync
-        string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        Debug.Log("[GameStateManager] Step 1: Stop enemy spawner");
 
-        FishNet.Managing.Scened.SceneLoadData sld = new FishNet.Managing.Scened.SceneLoadData(currentScene);
-        sld.ReplaceScenes = FishNet.Managing.Scened.ReplaceOption.All;
+        // Step 1: Stop the spawner to prevent new enemies
+        EnemySpawner spawner = FindAnyObjectByType<EnemySpawner>();
+        if (spawner != null)
+        {
+            StopAllCoroutines(); // Stop wave sequences
+        }
 
-        NetworkManager.SceneManager.LoadGlobalScenes(sld);
+        Debug.Log("[GameStateManager] Step 2: Cleaning up game objects");
+
+        // Step 2: Clean up all networked game objects
+        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+        Debug.Log($"[GameStateManager] Despawning {enemies.Length} enemies");
+        foreach (GameObject enemy in enemies)
+        {
+            if (enemy != null)
+            {
+                ServerManager.Despawn(enemy);
+            }
+        }
+
+        GameObject[] bullets = GameObject.FindGameObjectsWithTag("Bullet");
+        Debug.Log($"[GameStateManager] Despawning {bullets.Length} bullets");
+        foreach (GameObject bullet in bullets)
+        {
+            if (bullet != null)
+            {
+                ServerManager.Despawn(bullet);
+            }
+        }
+
+        // Step 3: Reset player health and position
+        GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+        Debug.Log($"[GameStateManager] Resetting {players.Length} players");
+
+        // Find spawn points
+        GameObject[] spawnPoints = GameObject.FindGameObjectsWithTag("Respawn");
+
+        for (int i = 0; i < players.Length; i++)
+        {
+            PlayerHealth health = players[i].GetComponent<PlayerHealth>();
+            if (health != null)
+            {
+                health.ResetHealthServerRpc();
+            }
+
+            // Reset position to spawn point
+            if (i < spawnPoints.Length && spawnPoints[i] != null)
+            {
+                players[i].transform.position = spawnPoints[i].transform.position;
+                Debug.Log($"[GameStateManager] Moved {players[i].name} to spawn point {i}");
+            }
+        }
+
+        // Step 4: Reset score
+        if (ScoreManager.Instance != null)
+        {
+            ScoreManager.Instance.ResetScore();
+        }
+
+        // Wait for cleanup
+        yield return new WaitForSeconds(0.5f);
+
+        Debug.Log("[GameStateManager] Step 3: Reset game state and restart");
+
+        // CRITICAL: Reset state to Lobby, which will trigger game start after delay
+        currentState.Value = GameState.Lobby;
+
+        Debug.Log("[GameStateManager] Restart complete - game will auto-start in 3 seconds");
     }
 
     // Public getters
