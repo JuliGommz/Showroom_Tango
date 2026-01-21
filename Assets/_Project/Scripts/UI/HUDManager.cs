@@ -190,9 +190,19 @@ public class HUDManager : MonoBehaviour
     /// </summary>
     public void OnRestartButtonPressed()
     {
-        if (GameStateManager.Instance != null)
+        // Find local player's NetworkObject to make the ServerRpc call
+        GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+
+        foreach (GameObject player in players)
         {
-            GameStateManager.Instance.RequestRestartServerRpc();
+            PlayerController controller = player.GetComponent<PlayerController>();
+            if (controller != null && controller.IsOwner)
+            {
+                controller.RequestGameRestartServerRpc();
+                return;
+            }
         }
+
+        Debug.LogWarning("[HUDManager] Could not find local player to request restart");
     }
 }

@@ -252,6 +252,16 @@ public class PlayerController : NetworkBehaviour
         }
     }
 
+    [ServerRpc(RequireOwnership = false)]
+    public void RequestGameRestartServerRpc()
+    {
+        // Forward restart request to GameStateManager
+        if (GameStateManager.Instance != null)
+        {
+            GameStateManager.Instance.RequestRestartServerRpc();
+        }
+    }
+
     // Public getters for other systems
     public string GetPlayerName() => playerName.Value;
     public int GetCurrentHP() => currentHP.Value;

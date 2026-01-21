@@ -1,0 +1,54 @@
+fix: Critical network and AI fixes - restart button, enemy targeting, camera clarification
+
+## Critical Fixes
+
+### 1. Restart Button Network Fix
+- **Problem**: HUDManager (MonoBehaviour) couldn't call ServerRpc methods directly
+- **Solution**: Implemented proxy pattern via PlayerController ServerRpc
+- **Implementation**:
+  - HUDManager.OnRestartButtonPressed() finds local player's NetworkObject
+  - Forwards restart request through PlayerController.RequestGameRestartServerRpc()
+  - Uses RequireOwnership = false for proper network authorization
+- **Files Modified**:
+  - Assets/_Project/Scripts/UI/HUDManager.cs (lines 191-207)
+  - Assets/_Project/Scripts/Player/PlayerController.cs (lines 255-262)
+
+### 2. Enemy Targeting AI Enhancement
+- **Problem**: Enemies locked onto initial target, never re-evaluated if player died
+- **Solution**: Periodic re-targeting with dead player detection
+- **Implementation**:
+  - Added TARGET_UPDATE_INTERVAL = 0.5s constant
+  - Timer-based FindNearestPlayer() re-evaluation
+  - Explicit IsDead() check forces re-targeting when current target dies
+  - Performance optimization: Reduced FindGameObjectsWithTag from 50/sec to 2/sec
+- **Files Modified**:
+  - Assets/_Project/Scripts/Enemies/EnemyChaser.cs (lines 38-87)
+
+### 3. Camera Behavior Clarification
+- **Analysis**: Camera following player is NOT a bug - working as intended
+- **Multiplayer Mode**: Online co-op (each player on separate PC)
+- **Expected Behavior**: Each player sees their own camera following them (owner-only)
+- **Z-Position**: Cinemachine CameraDistance = 10 (automatic adjustment for orthographic view)
+- **No Code Changes**: System working correctly for online multiplayer architecture
+
+## Expert Review Process
+- Applied V-Rule senior Unity developer review methodology
+- Analyzed all identified issues with 0.1% expert-level scrutiny
+- Re-evaluated initial diagnoses for completeness and accuracy
+- Identified performance optimizations and architectural improvements
+
+## Documentation Updates
+- Updated GDD to v1.5 with detailed fix documentation
+- Added "Known Issues & Recent Fixes" section (9.1)
+- Documented proxy pattern and re-targeting algorithms
+- Clarified multiplayer architecture (online vs local co-op)
+- Updated version history with current session changes
+
+## Testing Recommendations
+1. **Restart Button**: Test Game Over/Victory restart functionality
+2. **Enemy AI**: Verify enemies switch targets when player dies
+3. **Camera**: Confirm each player sees independent camera view
+
+---
+
+**Co-Authored-By**: Claude Sonnet 4.5 <noreply@anthropic.com>

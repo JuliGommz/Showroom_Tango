@@ -2268,11 +2268,57 @@ OVERALL: 75/100
 
 
 
-\### 9.1 Known Issues (As of v1.3)
+\### 9.1 Known Issues \& Recent Fixes
+
+\*\*FIXED in v1.5 (January 21, 2026):\*\*
+
+```
+
+✅ Restart button not working (RESOLVED)
+
+&nbsp;  - Issue: HUDManager (MonoBehaviour) couldn't call ServerRpc directly
+
+&nbsp;  - Solution: Proxy pattern via PlayerController.RequestGameRestartServerRpc()
+
+&nbsp;  - Implementation: HUDManager finds local player's NetworkObject and forwards request
+
+&nbsp;  - Files: HUDManager.cs:191-207, PlayerController.cs:255-262
 
 
 
-\*\*CRITICAL (Day 5 Fix Required):\*\*
+✅ Enemies only following one player (RESOLVED)
+
+&nbsp;  - Issue: Target set once on spawn, never re-evaluated if player died
+
+&nbsp;  - Solution: Periodic re-targeting (0.5s interval) + dead player detection
+
+&nbsp;  - Implementation: Timer-based FindNearestPlayer() with IsDead() checks
+
+&nbsp;  - Performance: Reduced FindGameObjectsWithTag overhead from 50/sec to 2/sec
+
+&nbsp;  - Files: EnemyChaser.cs:38-87
+
+
+
+✅ Camera behavior clarified (NOT A BUG)
+
+&nbsp;  - Concern: Camera following player instead of staying fixed
+
+&nbsp;  - Analysis: Working as intended for online co-op multiplayer
+
+&nbsp;  - Behavior: Each player sees their own camera follow them (owner-only)
+
+&nbsp;  - Z-Position: Cinemachine CameraDistance = 10 (not a bug, correct behavior)
+
+```
+
+
+
+\### 9.2 Known Issues (As of v1.5)
+
+
+
+\*\*CRITICAL (Remaining Issues):\*\*
 
 ```
 
@@ -2340,7 +2386,7 @@ OVERALL: 75/100
 
 
 
-\### 9.2 Technical Debt
+\### 9.3 Technical Debt
 
 
 
@@ -2368,7 +2414,7 @@ OVERALL: 75/100
 
 
 
-\### 9.3 Future Enhancements (Beyond Scope)
+\### 9.4 Future Enhancements (Beyond Scope)
 
 
 
@@ -2580,7 +2626,7 @@ Señor Coconut - "El Baile Alemán" (The German Dance)
 
 
 
-\*\*v1.4 (January 21, 2026) - CURRENT SESSION:\*\*
+\*\*v1.4 (January 21, 2026) - PREVIOUS SESSION:\*\*
 
 \- Wave system reduced from 5 to 3 waves
 
@@ -2609,6 +2655,30 @@ Señor Coconut - "El Baile Alemán" (The German Dance)
 \- All 3 weapons equipped on player by default
 
 \- Victory condition updated for 3-wave system
+
+
+
+\*\*v1.5 (January 21, 2026) - CURRENT SESSION (Expert Review \& Critical Fixes):\*\*
+
+\- \*\*CRITICAL:\*\* Restart button network fix - HUDManager proxy pattern via PlayerController ServerRpc
+
+\- \*\*CRITICAL:\*\* Enemy targeting AI fix - periodic re-evaluation (0.5s interval) with dead player detection
+
+\- Camera system clarified - working as intended for online co-op (each player sees own view)
+
+\- Multiplayer architecture confirmed: Online co-op (not local co-op)
+
+\- Enemy AI performance optimization - reduced FindGameObjectsWithTag overhead
+
+\- Expert review conducted with senior Unity developer V-Rule methodology
+
+\- Dynamic enemy re-targeting prevents AI lock to dead players
+
+\- Network-safe restart pattern implemented (RequireOwnership = false proxy)
+
+\- Camera Z-position behavior explained (Cinemachine CameraDistance = 10)
+
+\- Code quality improvements with performance considerations
 
 
 

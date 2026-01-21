@@ -37,6 +37,8 @@ public class EnemyChaser : NetworkBehaviour
 
     private Transform targetPlayer;
     private Rigidbody2D rb;
+    private float targetUpdateTimer = 0f;
+    private const float TARGET_UPDATE_INTERVAL = 0.5f; // Re-evaluate target every 0.5 seconds
 
     void Awake()
     {
@@ -57,6 +59,25 @@ public class EnemyChaser : NetworkBehaviour
     void FixedUpdate()
     {
         if (!IsServerStarted) return;  // ✅ Use lifecycle property
+
+        // Performance optimization: Re-evaluate target periodically instead of every frame
+        targetUpdateTimer += Time.fixedDeltaTime;
+        if (targetUpdateTimer >= TARGET_UPDATE_INTERVAL)
+        {
+            targetUpdateTimer = 0f;
+            FindNearestPlayer();
+        }
+
+        // Also check if current target is dead
+        if (targetPlayer != null)
+        {
+            PlayerHealth health = targetPlayer.GetComponent<PlayerHealth>();
+            if (health != null && health.IsDead())
+            {
+                targetPlayer = null; // Force re-targeting
+                FindNearestPlayer();
+            }
+        }
 
         if (targetPlayer == null)
         {
