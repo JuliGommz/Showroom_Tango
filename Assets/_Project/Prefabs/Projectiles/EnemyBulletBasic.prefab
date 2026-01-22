@@ -123,7 +123,7 @@ MonoBehaviour:
   _initializeOrder: 0
   _preventDespawnOnDisconnect: 0
   _defaultDespawnType: 0
-  _initializedTimestamp: -8584325913931408579
+  _initializedTimestamp: -8584325036303944226
   NetworkObserver: {fileID: 0}
   _enablePrediction: 0
   _predictionType: 0
@@ -208,11 +208,11 @@ MonoBehaviour:
   _componentIndexCache: 1
   _addedNetworkObject: {fileID: 8785910477577209670, guid: 111cabf86b4aa4d439875a2811822aa5, type: 3}
   _networkObjectCache: {fileID: 5875104429752836388}
-  speed: 25
+  speed: 3
   rotateWhileMoving: 0
-  rotationSpeed: 360
+  rotationSpeed: 100
   lifetime: 5
-  maxRange: 50
+  maxRange: 30
   damage: 3
   isPlayerBullet: 0
 --- !u!50 &2531047575862232843
