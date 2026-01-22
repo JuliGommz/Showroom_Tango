@@ -40,7 +40,7 @@ public class EnemySpawner : NetworkBehaviour
     [SerializeField] private BulletPool enemyBulletPool;
 
     [Header("Spawn Settings")]
-    [SerializeField] private float spawnRadius = 18f;
+    [SerializeField] private float spawnRadius = 33f;  // Increased to match new boundaries (30 + 3 buffer)
     [SerializeField] private float minSpawnDistance = 5f;
     [SerializeField] private int spawnPointCount = 8;
 

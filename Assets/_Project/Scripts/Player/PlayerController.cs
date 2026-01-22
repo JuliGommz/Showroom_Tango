@@ -189,8 +189,8 @@ public class PlayerController : NetworkBehaviour
 
             // Clamp position to boundaries
             Vector3 pos = transform.position;
-            pos.x = Mathf.Clamp(pos.x, -15f, 15f);
-            pos.y = Mathf.Clamp(pos.y, -10f, 10f);
+            pos.x = Mathf.Clamp(pos.x, -30f, 30f);  // Doubled from 15 to 30
+            pos.y = Mathf.Clamp(pos.y, -20f, 20f);  // Doubled from 10 to 20
             transform.position = pos;
         }
     }
