@@ -42,8 +42,10 @@ public class MenuManager : MonoBehaviour
     public void StartGame()
     {
         Debug.Log("[MenuManager] Loading Lobby scene...");
-        SceneManager.LoadScene("Lobby");
+        // SINGLE mode unloads current scene
+        SceneManager.LoadScene("Lobby", LoadSceneMode.Single);
     }
+
 
     /// <summary>
     /// Show story/lore popup

@@ -1,0 +1,387 @@
+📊 SESSION SUMMARY - January 26, 2026
+✅ COMPLETED IMPLEMENTATIONS
+
+Lobby Scene Networking - FIXED
+Problem: NetworkObject on NetworkManager causing crash
+Solution: Separated NetworkManager and LobbyManager into distinct GameObjects
+
+Result: FishNet networking initialized correctly
+
+Files Modified: Scene hierarchy restructure
+
+Network Initialization Timing - FIXED
+Problem: NullReferenceException when accessing IsSpawned, IsClient (deprecated API)
+Solution: Updated to modern FishNet API (IsClientInitialized), added NetworkManager.IsClientStarted checks
+
+Result: No more null reference errors
+
+Files Modified: PlayerSetupUI.cs
+
+Auto-Start Network - IMPLEMENTED
+Problem: NetworkManager not starting automatically in Lobby
+Solution: Created AutoStartNetwork.cs script to start host mode on scene load
+
+Result: Network starts automatically, players connect
+
+Files Created: AutoStartNetwork.cs
+
+Menu → Lobby Transition - FIXED
+Problem: Menu scene remained visible behind Lobby (additive loading)
+Solution: Changed SceneManager.LoadScene() to use LoadSceneMode.Single
+
+Result: Menu unloads properly, clean scene transition
+
+Files Modified: MenuManager.cs
+
+Lobby Camera Setup - FIXED
+Problem: "No Cameras Rendering" warning
+Solution: Added Main Camera with black background to Lobby scene
+
+Result: Proper rendering, black background visible
+
+Files Modified: Lobby scene (added Camera GameObject)
+
+Color Selection Ownership - IN PROGRESS
+Problem: Player 2 color overrides Player 1 color (both panels clickable)
+Solution: Implemented ownership detection in PlayerSetupUI.cs
+
+Only owned panel is interactable
+
+Non-owned panels dimmed (50% alpha)
+
+Ownership determined by NetworkConnection.ClientId matching playerIndex
+
+Status: Code delivered, awaiting test results
+
+Files Modified: PlayerSetupUI.cs (major update)
+
+🔧 TECHNICAL ARCHITECTURE ESTABLISHED
+Scene Flow:
+
+text
+Menu Scene (index 0)
+└─> Lobby Scene (index 1) [LoadSceneMode.Single]
+└─> Game Scene (index 2) [After countdown]
+Lobby Scene Structure:
+
+text
+Lobby
+├── Main Camera (black background, URP)
+├── Lobby_Canvas
+│ ├── Player1_Panel (playerIndex = 0)
+│ └── Player2_Panel (playerIndex = 1)
+├── EventSystem
+├── NetworkManager (FishNet core + AutoStartNetwork)
+└── LobbyManager (NetworkObject + game logic)
+Networking Pattern:
+
+FishNet as networking solution
+
+Server-authoritative state (SyncDictionary for player data)
+
+Client sends RPCs, server validates and syncs
+
+Ownership-based UI interaction control
+
+📋 CURRENT STATUS
+Component Status Notes
+Menu Scene ✅ Working Buttons exist, loads Lobby correctly
+Lobby Networking ✅ Working No errors, connects properly
+Scene Transition ✅ Working Clean unload, black background
+Player Registration ✅ Working Auto-registers on connect
+Color Selection ⏳ Testing Ownership code delivered
+Ready System ⏳ Pending Depends on color fix
+Countdown ⏳ Pending Needs both players ready
+Story Popup ❌ Not Started Menu feature
+Preferences Panel ❌ Not Started Menu feature
+🎯 NEXT STEPS (PRIORITY ORDER)
+IMMEDIATE (Current Session)
+Test Color Ownership Fix
+
+Verify only owned panel is clickable
+
+Confirm colors don't override
+
+Check console logs for ownership detection
+
+Fix Ready Button State
+
+Once colors work, test ready system
+
+Verify countdown triggers when both ready
+
+Confirm Game scene loads after countdown
+
+SHORT-TERM (This Week)
+Menu Story Popup
+
+Create popup panel with 80's aesthetic
+
+Add lore text content
+
+Implement close button (X + click outside)
+
+Connect to existing MenuManager.ShowStoryPopup()
+
+Menu Preferences Panel
+
+Create sub-menu UI
+
+Implement audio mixer controls (Music/FX sliders)
+
+Add difficulty selection (Tango Beginner/Advanced)
+
+Connect to existing PreferencesManager.cs
+​
+
+Save settings with PlayerPrefs
+
+MEDIUM-TERM (Next Session)
+Lobby Polish
+
+Fix any remaining ready button visual issues
+
+Test two-client scenario (build + editor)
+
+Verify countdown animation
+
+Ensure Game scene receives player data
+
+Menu Button Refinement
+
+Position buttons precisely over video text
+
+Test all three buttons (Play, Story, Preferences)
+
+Verify TransparentButtonFeedback hover effect
+
+🔬 TECHNICAL DECISIONS LOG
+Why separate NetworkManager and LobbyManager GameObjects?
+
+FishNet architecture: NetworkManager = framework component (no NetworkObject)
+
+LobbyManager = game logic (requires NetworkObject for RPCs)
+
+Violation causes "NetworkObject on NetworkManager" error
+
+Why use LoadSceneMode.Single instead of Additive?
+
+Menu has video background that remains visible if additive
+
+Single mode unloads previous scene automatically
+
+Cleaner memory management
+
+Why ownership-based interaction instead of spawning player-specific UI?
+
+Two static panels simpler than dynamic spawning
+
+Server can update both panels simultaneously
+
+Client only controls their assigned panel
+
+Clear visual feedback (dimmed non-owned panel)
+
+Why check NetworkManager.IsClientStarted instead of LobbyManager.IsSpawned?
+
+Scene NetworkObjects don't reliably report IsSpawned
+
+NetworkManager state is authoritative
+
+Modern FishNet API (IsClientInitialized) more reliable
+
+📁 KEY FILES MODIFIED TODAY
+PlayerSetupUI.cs - 3 major revisions (null safety → API update → ownership)
+
+MenuManager.cs - Scene loading mode fix
+
+AutoStartNetwork.cs - New file, network auto-start
+
+LobbyManager.cs - Updated with null safety in RPCs
+
+Lobby scene - GameObject restructure + camera addition
+
+🎓 LESSONS LEARNED
+FishNet Initialization: Scene NetworkObjects require explicit server/client start
+
+API Deprecation: Unity 6 + FishNet uses IsClientInitialized not IsClient
+
+Ownership Pattern: UI panels need explicit ownership checks for multiplayer
+
+Scene Loading: Always specify LoadSceneMode explicitly
+
+URP Cameras: Unity 6 URP has different Camera component structure
+
+⚡ PERFORMANCE NOTES
+Session token usage: ~75,000 / 200,000 (37.5% used)
+
+No context loss throughout session
+
+All code follows clean architecture principles
+
+Zero workarounds - root cause fixes only
+
+🔜 AWAITING USER ACTION
+Test the updated PlayerSetupUI.cs and report:
+
+Console output showing ownership detection
+
+Whether only one panel is clickable
+
+If colors still override or work correctly
+
+Once confirmed working, proceed to ready button testing, then menu popups.
+
+Status: Session productive, core networking issues resolved, UI ownership implementation delivered. Ready for final validation.
+
+this is the current status updates since last session.
+
+Current Issues since last instructions:
+
+Game loads and starts
+Player die direct after start (maybe they are accessing enemyBUlletPool and shooting themseves?)
+After pressing restrt button: Lobby Interface is shown--> Doesnt work properly. Unable to fill fields
+before game starts:
+
+Lobby: Player choise --> Start: Player 2 doenst starts --> console errors:
+Server failed to start. This usually occurs when the specified port is unavailable, be it closed or already in use.
+UnityEngine.Debug:LogError (object)
+FishNet.Managing.Logging.LevelLoggingConfiguration:LogError (string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Logging/LevelLoggingConfiguration.cs:148)
+FishNet.Managing.NetworkManager:InternalLogError (string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/NetworkManager.Logging.cs:82)
+FishNet.Managing.NetworkManagerExtensions:LogError (FishNet.Managing.NetworkManager,string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/NetworkManager.Logging.cs:140)
+FishNet.Transporting.Tugboat.Server.ServerSocket:ThreadedSocket () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Core/ServerSocket.cs:195)
+System.Threading._ThreadPoolWaitCallback:PerformWaitCallback ()
+SceneId of 4294012831 not found in SceneObjects. For more information on the missing object add DebugManager to your NetworkManager and enable WriteSceneObjectDetails. This may occur if your scene differs between client and server, if client does not have the scene loaded, or if networked scene objects do not have a SceneCondition. See ObserverManager in the documentation for more on conditions.
+UnityEngine.Debug:LogError (object)
+FishNet.Managing.Logging.LevelLoggingConfiguration:LogError (string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Logging/LevelLoggingConfiguration.cs:148)
+FishNet.Managing.NetworkManager:InternalLogError (string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/NetworkManager.Logging.cs:82)
+FishNet.Managing.NetworkManagerExtensions:LogError (FishNet.Managing.NetworkManager,string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/NetworkManager.Logging.cs:140)
+FishNet.Managing.Object.ManagedObjects:GetSceneNetworkObject (ulong,string,string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Object/ManagedObjects.Spawning.cs:350)
+FishNet.Managing.Client.ClientObjectCache:<Iterate>g__ProcessObject|13_0 (FishNet.Managing.Client.CachedNetworkObject,bool,int,FishNet.Managing.Client.ClientObjectCache/<>c__DisplayClass13_0&) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/Object/ObjectCaching.cs:285)
+FishNet.Managing.Client.ClientObjectCache:Iterate () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/Object/ObjectCaching.cs:270)
+FishNet.Managing.Client.ClientObjects:IterateObjectCache () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/Object/ClientObjects.cs:531)
+FishNet.Managing.Client.ClientManager:ParseReader (FishNet.Serializing.PooledReader,FishNet.Transporting.Channel,bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/ClientManager.cs:560)
+FishNet.Managing.Client.ClientManager:ParseReceived (FishNet.Transporting.ClientReceivedDataArgs) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/ClientManager.cs:398)
+FishNet.Managing.Client.ClientManager:Transport_OnClientReceivedData (FishNet.Transporting.ClientReceivedDataArgs) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/ClientManager.cs:352)
+FishNet.Transporting.Tugboat.Tugboat:HandleClientReceivedDataArgs (FishNet.Transporting.ClientReceivedDataArgs) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Tugboat.cs:290)
+FishNet.Transporting.Tugboat.Client.ClientSocket:IterateIncoming () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Core/ClientSocket.cs:254)
+FishNet.Transporting.Tugboat.Tugboat:IterateIncoming (bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Tugboat.cs:237)
+FishNet.Managing.Transporting.TransportManager:IterateIncoming (bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Transporting/TransportManager.cs:750)
+FishNet.Managing.Timing.TimeManager:TryIterateData (bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:1089)
+FishNet.Managing.Timing.TimeManager:IncreaseTick () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:730)
+FishNet.Managing.Timing.TimeManager:<TickUpdate>g__MethodLogic|113_0 () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:389)
+FishNet.Managing.Timing.TimeManager:TickUpdate () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:377)
+FishNet.Transporting.NetworkReaderLoop:Update () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/NetworkReaderLoop.cs:29)
+
+SceneId of 3756096431 not found in SceneObjects. For more information on the missing object add DebugManager to your NetworkManager and enable WriteSceneObjectDetails. This may occur if your scene differs between client and server, if client does not have the scene loaded, or if networked scene objects do not have a SceneCondition. See ObserverManager in the documentation for more on conditions.
+UnityEngine.Debug:LogError (object)
+FishNet.Managing.Logging.LevelLoggingConfiguration:LogError (string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Logging/LevelLoggingConfiguration.cs:148)
+FishNet.Managing.NetworkManager:InternalLogError (string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/NetworkManager.Logging.cs:82)
+FishNet.Managing.NetworkManagerExtensions:LogError (FishNet.Managing.NetworkManager,string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/NetworkManager.Logging.cs:140)
+FishNet.Managing.Object.ManagedObjects:GetSceneNetworkObject (ulong,string,string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Object/ManagedObjects.Spawning.cs:350)
+FishNet.Managing.Client.ClientObjectCache:<Iterate>g__ProcessObject|13_0 (FishNet.Managing.Client.CachedNetworkObject,bool,int,FishNet.Managing.Client.ClientObjectCache/<>c__DisplayClass13_0&) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/Object/ObjectCaching.cs:285)
+FishNet.Managing.Client.ClientObjectCache:Iterate () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/Object/ObjectCaching.cs:270)
+FishNet.Managing.Client.ClientObjects:IterateObjectCache () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/Object/ClientObjects.cs:531)
+FishNet.Managing.Client.ClientManager:ParseReader (FishNet.Serializing.PooledReader,FishNet.Transporting.Channel,bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/ClientManager.cs:560)
+FishNet.Managing.Client.ClientManager:ParseReceived (FishNet.Transporting.ClientReceivedDataArgs) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/ClientManager.cs:398)
+FishNet.Managing.Client.ClientManager:Transport_OnClientReceivedData (FishNet.Transporting.ClientReceivedDataArgs) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/ClientManager.cs:352)
+FishNet.Transporting.Tugboat.Tugboat:HandleClientReceivedDataArgs (FishNet.Transporting.ClientReceivedDataArgs) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Tugboat.cs:290)
+FishNet.Transporting.Tugboat.Client.ClientSocket:IterateIncoming () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Core/ClientSocket.cs:254)
+FishNet.Transporting.Tugboat.Tugboat:IterateIncoming (bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Tugboat.cs:237)
+FishNet.Managing.Transporting.TransportManager:IterateIncoming (bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Transporting/TransportManager.cs:750)
+FishNet.Managing.Timing.TimeManager:TryIterateData (bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:1089)
+FishNet.Managing.Timing.TimeManager:IncreaseTick () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:730)
+FishNet.Managing.Timing.TimeManager:<TickUpdate>g__MethodLogic|113_0 () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:389)
+FishNet.Managing.Timing.TimeManager:TickUpdate () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:377)
+FishNet.Transporting.NetworkReaderLoop:Update () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/NetworkReaderLoop.cs:29)
+
+SceneId of 3606965135 not found in SceneObjects. For more information on the missing object add DebugManager to your NetworkManager and enable WriteSceneObjectDetails. This may occur if your scene differs between client and server, if client does not have the scene loaded, or if networked scene objects do not have a SceneCondition. See ObserverManager in the documentation for more on conditions.
+UnityEngine.Debug:LogError (object)
+FishNet.Managing.Logging.LevelLoggingConfiguration:LogError (string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Logging/LevelLoggingConfiguration.cs:148)
+FishNet.Managing.NetworkManager:InternalLogError (string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/NetworkManager.Logging.cs:82)
+FishNet.Managing.NetworkManagerExtensions:LogError (FishNet.Managing.NetworkManager,string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/NetworkManager.Logging.cs:140)
+FishNet.Managing.Object.ManagedObjects:GetSceneNetworkObject (ulong,string,string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Object/ManagedObjects.Spawning.cs:350)
+FishNet.Managing.Client.ClientObjectCache:<Iterate>g__ProcessObject|13_0 (FishNet.Managing.Client.CachedNetworkObject,bool,int,FishNet.Managing.Client.ClientObjectCache/<>c__DisplayClass13_0&) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/Object/ObjectCaching.cs:285)
+FishNet.Managing.Client.ClientObjectCache:Iterate () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/Object/ObjectCaching.cs:270)
+FishNet.Managing.Client.ClientObjects:IterateObjectCache () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/Object/ClientObjects.cs:531)
+FishNet.Managing.Client.ClientManager:ParseReader (FishNet.Serializing.PooledReader,FishNet.Transporting.Channel,bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/ClientManager.cs:560)
+FishNet.Managing.Client.ClientManager:ParseReceived (FishNet.Transporting.ClientReceivedDataArgs) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/ClientManager.cs:398)
+FishNet.Managing.Client.ClientManager:Transport_OnClientReceivedData (FishNet.Transporting.ClientReceivedDataArgs) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/ClientManager.cs:352)
+FishNet.Transporting.Tugboat.Tugboat:HandleClientReceivedDataArgs (FishNet.Transporting.ClientReceivedDataArgs) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Tugboat.cs:290)
+FishNet.Transporting.Tugboat.Client.ClientSocket:IterateIncoming () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Core/ClientSocket.cs:254)
+FishNet.Transporting.Tugboat.Tugboat:IterateIncoming (bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Tugboat.cs:237)
+FishNet.Managing.Transporting.TransportManager:IterateIncoming (bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Transporting/TransportManager.cs:750)
+FishNet.Managing.Timing.TimeManager:TryIterateData (bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:1089)
+FishNet.Managing.Timing.TimeManager:IncreaseTick () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:730)
+FishNet.Managing.Timing.TimeManager:<TickUpdate>g__MethodLogic|113_0 () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:389)
+FishNet.Managing.Timing.TimeManager:TickUpdate () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:377)
+FishNet.Transporting.NetworkReaderLoop:Update () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/NetworkReaderLoop.cs:29)
+
+SceneId of 3672734607 not found in SceneObjects. For more information on the missing object add DebugManager to your NetworkManager and enable WriteSceneObjectDetails. This may occur if your scene differs between client and server, if client does not have the scene loaded, or if networked scene objects do not have a SceneCondition. See ObserverManager in the documentation for more on conditions.
+UnityEngine.Debug:LogError (object)
+FishNet.Managing.Logging.LevelLoggingConfiguration:LogError (string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Logging/LevelLoggingConfiguration.cs:148)
+FishNet.Managing.NetworkManager:InternalLogError (string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/NetworkManager.Logging.cs:82)
+FishNet.Managing.NetworkManagerExtensions:LogError (FishNet.Managing.NetworkManager,string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/NetworkManager.Logging.cs:140)
+FishNet.Managing.Object.ManagedObjects:GetSceneNetworkObject (ulong,string,string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Object/ManagedObjects.Spawning.cs:350)
+FishNet.Managing.Client.ClientObjectCache:<Iterate>g__ProcessObject|13_0 (FishNet.Managing.Client.CachedNetworkObject,bool,int,FishNet.Managing.Client.ClientObjectCache/<>c__DisplayClass13_0&) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/Object/ObjectCaching.cs:285)
+FishNet.Managing.Client.ClientObjectCache:Iterate () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/Object/ObjectCaching.cs:270)
+FishNet.Managing.Client.ClientObjects:IterateObjectCache () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/Object/ClientObjects.cs:531)
+FishNet.Managing.Client.ClientManager:ParseReader (FishNet.Serializing.PooledReader,FishNet.Transporting.Channel,bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/ClientManager.cs:560)
+FishNet.Managing.Client.ClientManager:ParseReceived (FishNet.Transporting.ClientReceivedDataArgs) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/ClientManager.cs:398)
+FishNet.Managing.Client.ClientManager:Transport_OnClientReceivedData (FishNet.Transporting.ClientReceivedDataArgs) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/ClientManager.cs:352)
+FishNet.Transporting.Tugboat.Tugboat:HandleClientReceivedDataArgs (FishNet.Transporting.ClientReceivedDataArgs) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Tugboat.cs:290)
+FishNet.Transporting.Tugboat.Client.ClientSocket:IterateIncoming () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Core/ClientSocket.cs:254)
+FishNet.Transporting.Tugboat.Tugboat:IterateIncoming (bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Tugboat.cs:237)
+FishNet.Managing.Transporting.TransportManager:IterateIncoming (bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Transporting/TransportManager.cs:750)
+FishNet.Managing.Timing.TimeManager:TryIterateData (bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:1089)
+FishNet.Managing.Timing.TimeManager:IncreaseTick () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:730)
+FishNet.Managing.Timing.TimeManager:<TickUpdate>g__MethodLogic|113_0 () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:389)
+FishNet.Managing.Timing.TimeManager:TickUpdate () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:377)
+FishNet.Transporting.NetworkReaderLoop:Update () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/NetworkReaderLoop.cs:29)
+
+SceneId of 4293585855 not found in SceneObjects. For more information on the missing object add DebugManager to your NetworkManager and enable WriteSceneObjectDetails. This may occur if your scene differs between client and server, if client does not have the scene loaded, or if networked scene objects do not have a SceneCondition. See ObserverManager in the documentation for more on conditions.
+UnityEngine.Debug:LogError (object)
+FishNet.Managing.Logging.LevelLoggingConfiguration:LogError (string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Logging/LevelLoggingConfiguration.cs:148)
+FishNet.Managing.NetworkManager:InternalLogError (string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/NetworkManager.Logging.cs:82)
+FishNet.Managing.NetworkManagerExtensions:LogError (FishNet.Managing.NetworkManager,string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/NetworkManager.Logging.cs:140)
+FishNet.Managing.Object.ManagedObjects:GetSceneNetworkObject (ulong,string,string) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Object/ManagedObjects.Spawning.cs:350)
+FishNet.Managing.Client.ClientObjectCache:<Iterate>g__ProcessObject|13_0 (FishNet.Managing.Client.CachedNetworkObject,bool,int,FishNet.Managing.Client.ClientObjectCache/<>c__DisplayClass13_0&) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/Object/ObjectCaching.cs:285)
+FishNet.Managing.Client.ClientObjectCache:Iterate () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/Object/ObjectCaching.cs:270)
+FishNet.Managing.Client.ClientObjects:IterateObjectCache () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/Object/ClientObjects.cs:531)
+FishNet.Managing.Client.ClientManager:ParseReader (FishNet.Serializing.PooledReader,FishNet.Transporting.Channel,bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/ClientManager.cs:560)
+FishNet.Managing.Client.ClientManager:ParseReceived (FishNet.Transporting.ClientReceivedDataArgs) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/ClientManager.cs:398)
+FishNet.Managing.Client.ClientManager:Transport_OnClientReceivedData (FishNet.Transporting.ClientReceivedDataArgs) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Client/ClientManager.cs:352)
+FishNet.Transporting.Tugboat.Tugboat:HandleClientReceivedDataArgs (FishNet.Transporting.ClientReceivedDataArgs) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Tugboat.cs:290)
+FishNet.Transporting.Tugboat.Client.ClientSocket:IterateIncoming () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Core/ClientSocket.cs:254)
+FishNet.Transporting.Tugboat.Tugboat:IterateIncoming (bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/Transports/Tugboat/Tugboat.cs:237)
+FishNet.Managing.Transporting.TransportManager:IterateIncoming (bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Transporting/TransportManager.cs:750)
+FishNet.Managing.Timing.TimeManager:TryIterateData (bool) (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:1089)
+FishNet.Managing.Timing.TimeManager:IncreaseTick () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:730)
+FishNet.Managing.Timing.TimeManager:<TickUpdate>g__MethodLogic|113_0 () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:389)
+FishNet.Managing.Timing.TimeManager:TickUpdate () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Managing/Timing/TimeManager.cs:377)
+FishNet.Transporting.NetworkReaderLoop:Update () (at C:/Users/Teilnehmer/Desktop/Schule/PRG/Unity_Projects/Showroom_Tango/Assets/FishNet/Runtime/Transporting/NetworkReaderLoop.cs:29)
+
+Show less
+Good — major context update. You've done significant work since our last exchange. Let me re-read the current state of all modified files and then diagnose the three issues systematically.
+
+Update Todos
+ Re-reading modified scripts
+ Diagnose Issue 1: Players die immediately after game start
+ Diagnose Issue 2: SceneId errors + port conflict on Player 2 join
+ Diagnose Issue 3: Lobby broken after restart
+ Deliver fixes
+
+3 Dateien gelesen
+Now let me read the AutoStartNetwork script and the key game scripts for the instant-death diagnosis.
+
+Glob
+Assets/_Project/Scripts/**/AutoStartNetwork.cs
+
+5 Dateien gelesen
+Now let me check the Game scene for a duplicate NetworkManager and the EnemySpawner timing.
+
+Update Todos
+ Re-read all modified scripts to sync context
+ Diagnosing instant player death
+ Diagnose Issue 2: SceneId errors + port conflict on Player 2 join
+ Diagnose Issue 3: Lobby broken after restart

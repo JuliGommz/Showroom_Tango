@@ -49,9 +49,15 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// LobbyManager - v1.1 - Added null-safety for menu transitions
+/// </summary>
 public class LobbyManager : NetworkBehaviour
 {
     public static LobbyManager Instance { get; private set; }
+
+    // EVENT-DRIVEN: Notify when singleton ready
+    public static event System.Action OnInstanceReady;
 
     [Header("Settings")]
     [SerializeField] private int maxPlayers = 2;
@@ -75,12 +81,17 @@ public class LobbyManager : NetworkBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[LobbyManager] Instance created");
+
+            // Fire event for subscribers
+            OnInstanceReady?.Invoke();
         }
         else
         {
             Destroy(gameObject);
         }
     }
+
 
     public override void OnStartNetwork()
     {
@@ -98,14 +109,34 @@ public class LobbyManager : NetworkBehaviour
         countdownTime.OnChange -= OnCountdownTimeChanged;
     }
 
-    /// <summary>
-    /// Register player in lobby (called when player joins)
-    /// </summary>
-    [ServerRpc(RequireOwnership = false)]
-    public void RegisterPlayerServerRpc(NetworkConnection conn, string playerName, Color playerColor)
+    public override void OnStartClient()
     {
-        int playerIndex = playerDataDict.Count;
+        base.OnStartClient();
 
+        string defaultName = "Player";
+        Color defaultColor = new Color(0.667f, 0f, 0.784f, 1f); // Magenta default
+
+        RegisterPlayerServerRpc(defaultName, defaultColor);
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void RegisterPlayerServerRpc(string playerName, Color playerColor, NetworkConnection conn = null)
+    {
+        // NULL SAFETY: Guard against missing connection
+        if (conn == null)
+        {
+            Debug.LogError("[LobbyManager] RegisterPlayerServerRpc: Connection is null!");
+            return;
+        }
+
+        // Guard: prevent duplicate registration
+        if (playerDataDict.ContainsKey(conn.ClientId))
+        {
+            Debug.LogWarning($"[LobbyManager] Player {conn.ClientId} already registered");
+            return;
+        }
+
+        int playerIndex = playerDataDict.Count;
         if (playerIndex >= maxPlayers)
         {
             Debug.LogWarning($"[LobbyManager] Cannot register player - lobby full ({maxPlayers} max)");
@@ -123,16 +154,15 @@ public class LobbyManager : NetworkBehaviour
 
         playerDataDict.Add(conn.ClientId, data);
         Debug.Log($"[LobbyManager] Player registered: {playerName} (Index {playerIndex}, Color {playerColor})");
-
         OnLobbyStateChanged?.Invoke();
     }
 
-    /// <summary>
-    /// Update player name (called from UI)
-    /// </summary>
     [ServerRpc(RequireOwnership = false)]
-    public void UpdatePlayerNameServerRpc(NetworkConnection conn, string newName)
+    public void UpdatePlayerNameServerRpc(string newName, NetworkConnection conn = null)
     {
+        // NULL SAFETY
+        if (conn == null) return;
+
         if (playerDataDict.TryGetValue(conn.ClientId, out PlayerLobbyData data))
         {
             data.playerName = newName;
@@ -141,12 +171,16 @@ public class LobbyManager : NetworkBehaviour
         }
     }
 
-    /// <summary>
-    /// Update player color (called from UI)
-    /// </summary>
     [ServerRpc(RequireOwnership = false)]
-    public void UpdatePlayerColorServerRpc(NetworkConnection conn, Color newColor)
+    public void UpdatePlayerColorServerRpc(Color newColor, NetworkConnection conn = null)
     {
+        // NULL SAFETY
+        if (conn == null)
+        {
+            Debug.LogWarning("[LobbyManager] UpdatePlayerColorServerRpc: Connection is null - ignoring");
+            return;
+        }
+
         if (playerDataDict.TryGetValue(conn.ClientId, out PlayerLobbyData data))
         {
             data.playerColor = newColor;
@@ -155,12 +189,12 @@ public class LobbyManager : NetworkBehaviour
         }
     }
 
-    /// <summary>
-    /// Toggle ready state (called from UI button)
-    /// </summary>
     [ServerRpc(RequireOwnership = false)]
-    public void ToggleReadyServerRpc(NetworkConnection conn)
+    public void ToggleReadyServerRpc(NetworkConnection conn = null)
     {
+        // NULL SAFETY
+        if (conn == null) return;
+
         if (playerDataDict.TryGetValue(conn.ClientId, out PlayerLobbyData data))
         {
             data.isReady = !data.isReady;
@@ -209,19 +243,7 @@ public class LobbyManager : NetworkBehaviour
         countdownTime.Value = 0;
         Debug.Log("[LobbyManager] Countdown complete - loading Game scene");
 
-        // Transfer player data to Game scene
-        TransferPlayerDataToGame();
-
-        // Load Game scene
         StartGame();
-    }
-
-    [Server]
-    private void TransferPlayerDataToGame()
-    {
-        // Player data will be transferred via PlayerController SyncVars
-        // when players spawn in the Game scene
-        Debug.Log("[LobbyManager] Player data ready for transfer to Game scene");
     }
 
     [Server]
@@ -267,9 +289,6 @@ public class LobbyManager : NetworkBehaviour
     public int GetPlayerCount() => playerDataDict.Count;
 }
 
-/// <summary>
-/// Player data structure for lobby
-/// </summary>
 [System.Serializable]
 public struct PlayerLobbyData
 {
