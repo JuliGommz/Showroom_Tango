@@ -1,142 +1,124 @@
-﻿/*
+/*
 ====================================================================
-* BulletPool.cs - Object Pooling System for Projectiles
+* BulletPool.cs - FishNet Native Object Pooling Wrapper
 ====================================================================
 * Project: Showroom_Tango
 * Course: PRG - Game & Multimedia Design SRH Hochschule
 * Developer: Julian Gomez
 * Date: 2025-01-08
-* Version: 1.0
-* 
-* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
-* 
+* Version: 2.1 - MonoBehaviour (scene object, no NetworkObject needed)
+*
+* WICHTIG: KOMMENTIERUNG NICHT LOESCHEN!
+*
 * [HUMAN-AUTHORED]
 * - Pooling requirement identified (bullet-hell performance)
-* - Pool size decisions (50 per type)
-* 
+* - FishNet native pooling architecture decision
+*
 * [AI-ASSISTED]
-* - Queue-based pooling implementation
-* - FishNet network spawn integration
-* - Automatic pool expansion logic
+* - FishNet DefaultObjectPool integration
+* - ServerManager.Spawn/Despawn with DespawnType.Pool
+* - Pre-warming via DefaultObjectPool.CacheObjects
+* - MonoBehaviour refactor (scene object does not need NetworkBehaviour)
 ====================================================================
 */
 
 using UnityEngine;
-using System.Collections.Generic;
+using FishNet;
 using FishNet.Object;
+using FishNet.Managing;
 
-public class BulletPool : NetworkBehaviour
+public class BulletPool : MonoBehaviour
 {
     [Header("Pool Configuration")]
     [SerializeField] private GameObject bulletPrefab;
-    [SerializeField] private int initialPoolSize = 1000;
-    [SerializeField] private Transform poolParent;
+    [SerializeField] private int prewarmCount = 200;
 
-    private Queue<GameObject> pool = new Queue<GameObject>();
+    private NetworkObject bulletNetworkPrefab;
+    private bool isInitialized = false;
 
     // Diagnostics
     private int totalSpawned = 0;
     private int totalReturned = 0;
-    private int totalExpansions = 0;
-    private int nullEncountered = 0;
-    private int activeEncountered = 0;
 
-    public override void OnStartServer()
+    void Update()
     {
-        base.OnStartServer();
-        Debug.Log("[BulletPool] OnStartServer called - Starting initialization...");
-        InitializePool();
-        Debug.Log($"[BulletPool] Pool initialized with {pool.Count} bullets ready");
-    }
-
-    private void InitializePool()
-    {
-        if (poolParent == null)
+        // Wait for server to be active, then initialize once
+        if (!isInitialized)
         {
-            poolParent = new GameObject($"{bulletPrefab.name}_Pool").transform;
-        }
-
-        for (int i = 0; i < initialPoolSize; i++)
-        {
-            CreateNewBullet();
+            NetworkManager nm = InstanceFinder.NetworkManager;
+            if (nm != null && nm.IsServerStarted)
+            {
+                Initialize(nm);
+            }
         }
     }
 
-    private GameObject CreateNewBullet()
+    private void Initialize(NetworkManager nm)
     {
-        GameObject bullet = Instantiate(bulletPrefab, poolParent);
-        bullet.SetActive(false);
-        pool.Enqueue(bullet);
-        return bullet;
+        if (bulletPrefab == null)
+        {
+            Debug.LogError("[BulletPool] bulletPrefab not assigned!");
+            isInitialized = true; // Prevent retrying
+            return;
+        }
+
+        bulletNetworkPrefab = bulletPrefab.GetComponent<NetworkObject>();
+        if (bulletNetworkPrefab == null)
+        {
+            Debug.LogError("[BulletPool] bulletPrefab has no NetworkObject component!");
+            isInitialized = true;
+            return;
+        }
+
+        // Pre-warm FishNet's native pool
+        if (nm.ObjectPool != null)
+        {
+            nm.ObjectPool.CacheObjects(bulletNetworkPrefab, prewarmCount, true);
+            Debug.Log($"[BulletPool] Pre-warmed {prewarmCount} bullets in FishNet pool");
+        }
+
+        isInitialized = true;
+        Debug.Log($"[BulletPool] Initialized: {gameObject.name}");
     }
 
     /// <summary>
-    /// Gets bullet from pool or creates new one if empty
+    /// Gets bullet from FishNet's native pool, positions it, and spawns on network.
+    /// Called from server context (WeaponManager [ServerRpc] or EnemyShooter [Server]).
     /// </summary>
-    [Server]
     public GameObject GetBullet(Vector3 position, Quaternion rotation)
     {
-        GameObject bullet = null;
-        int attempts = 0;
-
-        // Null-check loop with safety limit - re-enqueue invalid bullets
-        while (bullet == null && pool.Count > 0 && attempts < 10)
+        NetworkManager nm = InstanceFinder.NetworkManager;
+        if (nm == null || !nm.IsServerStarted)
         {
-            GameObject candidate = pool.Dequeue();
-
-            if (candidate != null && !candidate.activeInHierarchy)
-            {
-                // Valid inactive bullet found
-                bullet = candidate;
-                break;
-            }
-            else if (candidate != null && candidate.activeInHierarchy)
-            {
-                // Still active, put it back
-                pool.Enqueue(candidate);
-                activeEncountered++;
-                Debug.LogWarning($"[BulletPool] Encountered active bullet in pool (count: {activeEncountered})");
-            }
-            else if (candidate == null)
-            {
-                // Destroyed bullet detected
-                nullEncountered++;
-                Debug.LogError($"[BulletPool] DIAGNOSTIC: Destroyed bullet found in pool! Total null encounters: {nullEncountered}");
-            }
-
-            attempts++;
+            Debug.LogError("[BulletPool] Cannot get bullet - server not active!");
+            return null;
         }
 
-        // Auto-expansion if pool exhausted
-        if (bullet == null)
+        if (bulletNetworkPrefab == null)
         {
-            bullet = CreateNewBullet();
-            totalExpansions++;
-            Debug.Log($"[BulletPool] Expanded pool for {bulletPrefab.name} (Total expansions: {totalExpansions})");
+            Debug.LogError("[BulletPool] bulletPrefab is null or not initialized!");
+            return null;
         }
 
-        // Safe setup now that bullet is guaranteed valid
-        bullet.transform.position = position;
-        bullet.transform.rotation = rotation;
-        bullet.SetActive(true);
+        // Retrieve from FishNet's native pool (reuses despawned objects)
+        NetworkObject nob = nm.GetPooledInstantiated(bulletNetworkPrefab, position, rotation, true);
+        GameObject bullet = nob.gameObject;
+        nm.ServerManager.Spawn(bullet);
 
-        ServerManager.Spawn(bullet);
         totalSpawned++;
 
-        // Periodic diagnostics every 100 spawns
         if (totalSpawned % 100 == 0)
         {
-            int activeBullets = GameObject.FindGameObjectsWithTag("Bullet").Length;
-            Debug.Log($"[BulletPool] DIAGNOSTICS - Spawned: {totalSpawned}, Returned: {totalReturned}, Active: {activeBullets}, Pool: {pool.Count}, Nulls: {nullEncountered}, Expansions: {totalExpansions}");
+            Debug.Log($"[BulletPool] DIAGNOSTICS - Spawned: {totalSpawned}, Returned: {totalReturned}");
         }
 
         return bullet;
     }
 
     /// <summary>
-    /// Returns bullet to pool
+    /// Returns bullet to FishNet's native pool.
+    /// Called from server context.
     /// </summary>
-    [Server]
     public void ReturnBullet(GameObject bullet)
     {
         if (bullet == null)
@@ -145,10 +127,16 @@ public class BulletPool : NetworkBehaviour
             return;
         }
 
-        ServerManager.Despawn(bullet, DespawnType.Pool); // ✅ Keeps GameObject alive
-        bullet.SetActive(false);
-        bullet.transform.SetParent(poolParent);
-        pool.Enqueue(bullet);
+        NetworkManager nm = InstanceFinder.NetworkManager;
+        if (nm == null || !nm.IsServerStarted) return;
+
+        NetworkObject nob = bullet.GetComponent<NetworkObject>();
+        if (nob != null && nob.IsSpawned)
+        {
+            // DespawnType.Pool tells FishNet to store in DefaultObjectPool instead of destroying
+            nm.ServerManager.Despawn(nob, DespawnType.Pool);
+        }
+
         totalReturned++;
     }
 }

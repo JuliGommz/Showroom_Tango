@@ -129,10 +129,17 @@ public class HUDManager : MonoBehaviour
     private void UpdateWave()
     {
         EnemySpawner spawner = FindAnyObjectByType<EnemySpawner>();
-        if (spawner != null && waveText != null)
+        if (spawner == null)
         {
-            waveText.text = $"WAVE {spawner.GetCurrentWave()} / 3";
+            Debug.LogWarning("[HUDManager] EnemySpawner not found for wave display");
+            return;
         }
+        if (waveText == null)
+        {
+            Debug.LogWarning("[HUDManager] waveText not assigned in Inspector!");
+            return;
+        }
+        waveText.text = $"WAVE {spawner.GetCurrentWave()} / {spawner.GetMaxWaves()}";
     }
 
     private void UpdatePlayerHP()
@@ -220,6 +227,7 @@ public class HUDManager : MonoBehaviour
         {
             gameOverPanel.SetActive(true);
             UpdateFinalScore();
+            SubmitHighscores();
         }
     }
 
@@ -229,6 +237,33 @@ public class HUDManager : MonoBehaviour
         {
             victoryPanel.SetActive(true);
             UpdateFinalScore();
+            SubmitHighscores();
+        }
+    }
+
+    private void SubmitHighscores()
+    {
+        if (HighscoreManager.Instance == null || ScoreManager.Instance == null) return;
+
+        int teamScore = ScoreManager.Instance.GetTeamScore();
+        GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+
+        if (players.Length == 0)
+        {
+            // No player objects remain (all dead) - submit with fallback name
+            HighscoreManager.Instance.SubmitScore("Team", teamScore);
+            Debug.Log($"[HUDManager] Highscore submitted: Team - {teamScore}");
+            return;
+        }
+
+        foreach (GameObject playerObj in players)
+        {
+            PlayerController controller = playerObj.GetComponent<PlayerController>();
+            string playerName = controller != null ? controller.GetPlayerName() : "Player";
+            int individualScore = ScoreManager.Instance.GetPlayerScore(playerObj);
+
+            HighscoreManager.Instance.SubmitScore(playerName, individualScore > 0 ? individualScore : teamScore);
+            Debug.Log($"[HUDManager] Highscore submitted: {playerName} - {(individualScore > 0 ? individualScore : teamScore)}");
         }
     }
 

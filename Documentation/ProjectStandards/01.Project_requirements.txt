@@ -1,0 +1,123 @@
+# Projekt-Anforderungen: 2-Player Top-Down Bullet-Hell
+
+**Quelle**: Arbeitsauftrag SRH Hochschule
+**Technologie**: Unity 6000.0.62f1 + FishNet
+**Arbeitsform**: Einzelarbeit oder 2er-Team
+**Abgabedatum**: 23.01.2026
+**Abgabeform**: GitHub-Repository (oeffentlich)
+**Last Updated**: 2026-01-27
+
+---
+
+## Pflichtanforderungen (80 Punkte)
+
+### 1. Multiplayer-Basis (FishNet) - 10 Punkte
+- [x] FishNet korrekt im Unity-Projekt eingerichtet
+- [x] Host/Client-Verbindung moeglich
+- [x] Zwei Instanzen koennen sich stabil verbinden
+- [x] NetworkManager korrekt konfiguriert
+
+### 2. Spielersteuerung & Synchronisation - 15 Punkte
+- [x] Top-Down-Bewegung (WASD, Controller optional)
+- [x] Spieler als NetworkObject mit NetworkBehaviour
+- [x] Ownership korrekt gesetzt (nur eigener Spieler steuerbar)
+- [x] Spielerbewegung server-authoritativ synchronisiert
+- [x] Mindestens eine SyncVar (Name, HP, Farbe)
+
+### 3. Schiessen & Bullet-Hell-Mechaniken - 20 Punkte
+- [x] Netzwerkfaehiges Projektilsystem
+- [x] Mindestens zwei unterschiedliche Bullet-Patterns (Auto-Fire, Multi-Weapon Targeting)
+- [x] Projektile korrekt synchronisiert
+- [x] Feuerrate/Cooldown-System vorhanden
+- [x] Treffererkennung und Schaden auf beiden Clients korrekt
+- [ ] BUG: Projectile spawn position slightly behind player (Tier 1 fix pending)
+
+### 4. Gegner-, Wave- oder Boss-System - 15 Punkte
+- [x] Mindestens zwei unterschiedliche Gegnertypen (Chaser + Shooter)
+- [x] Gegner serverseitig gespawnt
+- [x] Wave-Struktur implementiert (5 Waves: 15/25/40/60/100 enemies)
+- [x] Gegner- und Boss-Bullets auf beiden Clients konsistent sichtbar
+
+### 5. Leben, Treffer & Spielablauf - 10 Punkte
+- [x] HP- oder Lebenssystem vorhanden
+- [x] Schaden und Treffer korrekt synchronisiert
+- [x] Klarer Gameflow: Menu -> Lobby -> Game -> Game Over/Victory -> Restart
+
+### 6. HUD & Punkte - 10 Punkte
+- [x] HUD mit HP/Leben
+- [x] HUD mit Score
+- [x] Punktevergabe fuer Kills und/oder Ueberlebenszeit
+- [x] Score synchronisiert und korrekt angezeigt
+- [ ] **Highscore-Liste ueber PHP & SQL (serverseitig)** - PENDING (Tier 1)
+
+**Summe Pflicht**: 80 Punkte (estimated ~70 secured, SQL pending)
+
+---
+
+## Bonusfeatures (max. 20 Punkte)
+
+**WICHTIG**: Alle Bonusfeatures muessen in README.md dokumentiert sein.
+Maximal 20 Bonuspunkte werden angerechnet (unabhaengig von Anzahl).
+
+### A) Lobby- & Matchmaking-System (5-10 Punkte) - IMPLEMENTED
+- [x] Lobby vor Spielstart
+- [x] Anzeige verbundener Spieler
+- [x] Ready-System
+- [x] Gemeinsamer Szenenwechsel
+
+### B) Power-Ups & Spielmechaniken (5-10 Punkte) - NOT IMPLEMENTING
+
+### C) Komplexere Bullet-Patterns (5-10 Punkte) - NOT IMPLEMENTING
+
+### D) Erweiterte Persistenz (5-10 Punkte) - PARTIAL
+- [ ] Highscore-Listen (SQL backend pending)
+- [x] JSON-basierte Speicherung (fallback exists)
+
+### E) Koop-/Versus-Elemente (5-10 Punkte) - NOT IMPLEMENTING
+
+### F) Visuelle & technische Verbesserungen (5-10 Punkte) - PARTIAL
+- [x] Neon-Glow Visual System
+- [ ] Music Manager (Tier 1 pending)
+- [ ] Synchronisierte VFX & SFX
+
+---
+
+## README.md Pflichtinhalte
+
+Die README.md im Repository-Root muss enthalten:
+
+- [x] Kurzbeschreibung des Spiels
+- [x] Anleitung zum Starten von Host und Client
+- [x] Technischer Ueberblick (RPCs, SyncVars, Bullet-Logik, Gegner-Logik)
+- [x] Beschreibung der Persistenz (PHP/SQL, JSON, PlayerPrefs)
+- [x] Uebersicht umgesetzter Bonusfeatures
+- [x] Bekannte Bugs oder Einschraenkungen
+- [ ] README needs final update to reflect current state (Tier 1 task #4)
+
+---
+
+## GitHub-Abgabe Anforderungen
+
+- [x] Oeffentliches GitHub-Repository
+- [x] Repository-Name: Bullet_Love
+- [x] Unity-Projekt (ohne Build-Artefakte)
+- [x] Vollstaendige README.md im Root
+- [x] Saubere Ordnerstruktur
+- [x] Verstaendliche Commit-Nachrichten
+- [x] Regelmaessige Commits
+- [ ] Clean up Build_Testing/ folder before final push (Tier 4)
+
+---
+
+## Bewertungstabelle
+
+| Kriterium | Beschreibung | Punkte | Status |
+|-----------|-------------|--------|--------|
+| Multiplayer-Basis | Funktionierende Host/Client, NetworkManager | 10 | DONE |
+| Player-Steuerung | Top-Down Movement, Ownership, SyncVars, Sync | 15 | DONE |
+| Bullet-Hell Shooting | 2+ Patterns, Netzwerk, Treffer, Cooldowns | 20 | DONE (bug pending) |
+| Gegner, Waves & Boss | 2+ Typen, Server-Spawn, Boss oder Waves | 15 | DONE |
+| Leben & Gameflow | HP-System, Schaden, Game Over/Victory | 10 | DONE |
+| HUD & Score | HP/Score sichtbar, synchronisiert | 10 | PARTIAL (SQL pending) |
+| Bonusfeatures | Dokumentierte Zusatzfeatures | 20 | ~10-15 secured |
+| **GESAMT** | | **100** | **~75-85 estimated** |

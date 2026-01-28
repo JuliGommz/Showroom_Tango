@@ -24,17 +24,21 @@ public class PlayerSetupUI : MonoBehaviour
     [SerializeField] private Color readyColor = Color.green;
     [SerializeField] private Color notReadyColor = Color.gray;
 
+    [Header("Countdown Display")]
+    [SerializeField] private GameObject countdownPanel;
+    [SerializeField] private TextMeshProUGUI countdownText;
+
     [Header("Ownership Control")]
     [SerializeField] private GameObject interactableElements; // Parent containing buttons/input
 
     private readonly Color[] colorPresets = new Color[]
     {
-        new Color(0.667f, 0f, 0.784f, 1f),
-        new Color(0f, 1f, 1f, 1f),
-        new Color(1f, 1f, 0f, 1f),
-        new Color(0f, 1f, 0f, 1f),
-        new Color(1f, 0f, 0f, 1f),
-        new Color(0f, 0.5f, 1f, 1f)
+        new Color(0.667f, 0f, 0.784f, 1f),  // Magenta
+        new Color(0f, 1f, 1f, 1f),          // Cyan
+        new Color(1f, 1f, 0f, 1f),          // Yellow
+        new Color(0f, 1f, 0f, 1f),          // Green
+        new Color(1f, 0f, 0f, 1f),          // Red
+        new Color(0f, 0.5f, 1f, 1f)         // Blue
     };
 
     private Color selectedColor;
@@ -64,6 +68,10 @@ public class PlayerSetupUI : MonoBehaviour
         if (selectedColorIndicator != null)
             selectedColorIndicator.color = selectedColor;
 
+        // Hide countdown panel initially
+        if (countdownPanel != null)
+            countdownPanel.SetActive(false);
+
         // Disable interaction until ownership determined
         SetInteractable(false);
 
@@ -82,8 +90,15 @@ public class PlayerSetupUI : MonoBehaviour
 
     void OnDestroy()
     {
-        // Cleanup: Unsubscribe from event to prevent memory leaks
+        // Cleanup: Unsubscribe from events to prevent memory leaks
         LobbyManager.OnInstanceReady -= InitializeWithLobbyManager;
+
+        // NULL SAFETY: Check if LobbyManager still exists
+        if (LobbyManager.Instance != null)
+        {
+            LobbyManager.Instance.OnCountdownTick -= UpdateCountdownDisplay;
+            LobbyManager.Instance.OnLobbyStateChanged -= OnLobbyStateChanged;
+        }
     }
 
     private void InitializeWithLobbyManager()
@@ -92,11 +107,16 @@ public class PlayerSetupUI : MonoBehaviour
         LobbyManager.OnInstanceReady -= InitializeWithLobbyManager;
 
         Debug.Log($"[PlayerSetupUI] Panel {playerIndex} - LobbyManager ready, starting network initialization");
+
+        // Subscribe to countdown events
+        if (LobbyManager.Instance != null)
+        {
+            LobbyManager.Instance.OnCountdownTick += UpdateCountdownDisplay;
+            LobbyManager.Instance.OnLobbyStateChanged += OnLobbyStateChanged;
+        }
+
         StartCoroutine(WaitForNetwork());
     }
-
-
-
 
     private System.Collections.IEnumerator WaitForNetwork()
     {
@@ -109,6 +129,7 @@ public class PlayerSetupUI : MonoBehaviour
 
         float timeout = 10f;
         float elapsed = 0f;
+
         while (!networkManager.IsClientStarted && elapsed < timeout)
         {
             elapsed += 0.1f;
@@ -142,11 +163,15 @@ public class PlayerSetupUI : MonoBehaviour
         // Determine ownership
         DetermineOwnership();
 
-        // Send initial color only if this is MY panel
+        // Send initial name and color only if this is MY panel
         if (isMyPanel && lobbyManager != null)
         {
+            if (nameInputField != null)
+            {
+                lobbyManager.UpdatePlayerNameServerRpc(nameInputField.text);
+            }
             lobbyManager.UpdatePlayerColorServerRpc(selectedColor);
-            Debug.Log($"[PlayerSetupUI] Player {playerIndex + 1} - Initial color sent (MY PANEL)");
+            Debug.Log($"[PlayerSetupUI] Player {playerIndex + 1} - Initial name/color sent (MY PANEL)");
         }
     }
 
@@ -173,7 +198,6 @@ public class PlayerSetupUI : MonoBehaviour
         // First player gets index 0, second player gets index 1
         // My connection determines which panel I own
         var playerData = lobbyManager.GetPlayerData();
-
         foreach (var kvp in playerData)
         {
             if (kvp.Key == myConnectionId)
@@ -247,7 +271,6 @@ public class PlayerSetupUI : MonoBehaviour
         if (colorIndex < 0 || colorIndex >= colorPresets.Length) return;
 
         selectedColor = colorPresets[colorIndex];
-
         if (selectedColorIndicator != null)
             selectedColorIndicator.color = selectedColor;
 
@@ -278,6 +301,31 @@ public class PlayerSetupUI : MonoBehaviour
         {
             lobbyManager.ToggleReadyServerRpc();
             Debug.Log($"[PlayerSetupUI] Panel {playerIndex} (MY PANEL) - Ready toggled");
+        }
+    }
+
+    // Countdown display logic
+    private void UpdateCountdownDisplay(int secondsRemaining)
+    {
+        if (countdownPanel == null) return;
+
+        countdownPanel.SetActive(secondsRemaining > 0);
+
+        if (secondsRemaining > 0 && countdownText != null)
+        {
+            countdownText.text = secondsRemaining.ToString();
+        }
+    }
+
+    // Listen to lobby state changes
+    private void OnLobbyStateChanged()
+    {
+        if (lobbyManager == null) return;
+
+        // Hide countdown if cancelled
+        if (!lobbyManager.IsCountdownActive() && countdownPanel != null)
+        {
+            countdownPanel.SetActive(false);
         }
     }
 

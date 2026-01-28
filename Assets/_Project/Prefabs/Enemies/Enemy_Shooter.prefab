@@ -188,7 +188,7 @@ MonoBehaviour:
   _initializeOrder: 0
   _preventDespawnOnDisconnect: 0
   _defaultDespawnType: 0
-  _initializedTimestamp: -8584325895457336498
+  _initializedTimestamp: -8584319993190129007
   NetworkObserver: {fileID: 0}
   _enablePrediction: 0
   _predictionType: 0
@@ -291,11 +291,12 @@ MonoBehaviour:
   _addedNetworkObject: {fileID: 4322912711510339584}
   _networkObjectCache: {fileID: 4322912711510339584}
   moveSpeed: 2
-  optimalDistance: 6
+  optimalDistance: 7
   tooCloseDistance: 4
-  tooFarDistance: 8
-  shootingRange: 15
-  fireRate: 1.2
+  tooFarDistance: 9
+  shootingRange: 13
+  fireRate: 2
+  bulletCount: 5
   bulletPrefab: {fileID: 3681201536365730473, guid: 12e5de0b0463bcc4eab86ef09ceda070, type: 3}
   bulletSpeed: 8
-  bulletDamage: 10
+  bulletDamage: 8

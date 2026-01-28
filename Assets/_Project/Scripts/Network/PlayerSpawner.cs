@@ -1,100 +1,151 @@
 /*
 ====================================================================
-* PlayerSpawner - Automatic Player Spawning on Connection
+* PlayerSpawner - Spawns Players When Game Starts
 ====================================================================
 * Project: Showroom_Tango (2-Player Top-Down Bullet-Hell)
 * Course: PRG - Game & Multimedia Design
 * Developer: Julian
 * Date: 18.12.2025
-* Version: 1.0
-* 
+* Version: 2.0 - Single-scene: spawns on state change, not scene load
+*
 * WICHTIG: KOMMENTIERUNG NICHT LOESCHEN!
-* Diese detaillierte Authorship-Dokumentation ist fuer die akademische
-* Bewertung erforderlich und darf nicht entfernt werden!
-* 
-* AUTHORSHIP CLASSIFICATION:
-* 
+*
 * [HUMAN-AUTHORED]
-* - Auto-spawn strategy on connection
+* - Auto-spawn strategy on game start
 * - Spawn point positioning
-* 
+* - Single-scene architecture decision
+*
 * [AI-ASSISTED]
 * - FishNet server connection event handling
 * - Server-authority spawn pattern
-* - Academic header formatting
-* 
+* - GameStateManager event subscription
+*
 * [AI-GENERATED]
 * - None
-* 
-* DEPENDENCIES:
-* - FishNet.Managing.NetworkManager
-* - FishNet.Connection.NetworkConnection
-* 
+*
 * NOTES:
-* - Spawns player automatically when client connects
-* - Server-authority spawning (ADR-009)
-* - Each connection gets their own player instance
-* - Spawn positions offset for visibility
+* - Spawns players when GameState transitions to Playing
+* - Reads player data from LobbyManager (same scene, no caching needed)
+* - Despawn handled by GameStateManager restart sequence
 ====================================================================
 */
 
+using UnityEngine;
 using FishNet.Managing;
 using FishNet.Connection;
-using UnityEngine;
 
 public class PlayerSpawner : MonoBehaviour
 {
     [SerializeField] private GameObject playerPrefab;
     [SerializeField] private Vector3 spawnOffset = new Vector3(2f, 0f, 0f);
-    
+
     private NetworkManager networkManager;
     private int spawnedPlayers = 0;
+    private bool hasSpawnedThisRound = false;
 
-    void Awake()
+    void Start()
     {
-        networkManager = GetComponent<NetworkManager>();
-        
+        networkManager = FindFirstObjectByType<NetworkManager>();
+
         if (networkManager == null)
         {
-            Debug.LogError("PlayerSpawner: NetworkManager not found on same GameObject!");
+            Debug.LogError("[PlayerSpawner] NetworkManager not found!");
             return;
         }
-        
+
         if (playerPrefab == null)
         {
-            Debug.LogError("PlayerSpawner: Player Prefab not assigned!");
+            Debug.LogError("[PlayerSpawner] Player Prefab not assigned!");
             return;
         }
-        
-        // Subscribe to client connection events
-        networkManager.ServerManager.OnRemoteConnectionState += OnRemoteConnectionState;
+
+        // Subscribe to game state changes
+        if (GameStateManager.Instance != null)
+        {
+            GameStateManager.Instance.OnGameStateChanged += OnGameStateChanged;
+        }
+        else
+        {
+            // Retry after a short delay if GameStateManager isn't ready yet
+            Invoke(nameof(SubscribeToGameState), 0.5f);
+        }
+    }
+
+    private void SubscribeToGameState()
+    {
+        if (GameStateManager.Instance != null)
+        {
+            GameStateManager.Instance.OnGameStateChanged += OnGameStateChanged;
+        }
     }
 
     void OnDestroy()
     {
-        if (networkManager != null)
+        if (GameStateManager.Instance != null)
         {
-            networkManager.ServerManager.OnRemoteConnectionState -= OnRemoteConnectionState;
+            GameStateManager.Instance.OnGameStateChanged -= OnGameStateChanged;
         }
     }
 
-    private void OnRemoteConnectionState(NetworkConnection conn, FishNet.Transporting.RemoteConnectionStateArgs args)
+    private void OnGameStateChanged(GameState newState)
     {
-        // Only spawn when client connects
-        if (args.ConnectionState != FishNet.Transporting.RemoteConnectionState.Started)
-            return;
-        
-        // Calculate spawn position (offset each player)
+        if (newState == GameState.Playing && !hasSpawnedThisRound)
+        {
+            if (networkManager != null && networkManager.IsServerStarted)
+            {
+                SpawnAllPlayers();
+            }
+        }
+        else if (newState == GameState.Lobby)
+        {
+            // Reset for next round
+            hasSpawnedThisRound = false;
+            spawnedPlayers = 0;
+        }
+    }
+
+    private void SpawnAllPlayers()
+    {
+        hasSpawnedThisRound = true;
+        spawnedPlayers = 0;
+
+        Debug.Log("[PlayerSpawner] Game started - spawning players for all connections");
+
+        foreach (NetworkConnection conn in networkManager.ServerManager.Clients.Values)
+        {
+            if (conn.IsActive)
+            {
+                SpawnPlayerForConnection(conn);
+            }
+        }
+
+        Debug.Log($"[PlayerSpawner] Spawned {spawnedPlayers} players");
+    }
+
+    private void SpawnPlayerForConnection(NetworkConnection conn)
+    {
         Vector3 spawnPosition = spawnOffset * spawnedPlayers;
-        
-        // Spawn player prefab
+
         GameObject playerInstance = Instantiate(playerPrefab, spawnPosition, Quaternion.identity);
-        
-        // Give ownership to the connecting client
         networkManager.ServerManager.Spawn(playerInstance, conn);
-        
+
+        // Apply Lobby data directly from LobbyManager (same scene, no caching needed)
+        if (LobbyManager.Instance != null)
+        {
+            var playerData = LobbyManager.Instance.GetPlayerData();
+            if (playerData.TryGetValue(conn.ClientId, out PlayerLobbyData lobbyData))
+            {
+                PlayerController controller = playerInstance.GetComponent<PlayerController>();
+                if (controller != null)
+                {
+                    controller.ApplyName(lobbyData.playerName);
+                    controller.ApplyColor(lobbyData.playerColor);
+                    Debug.Log($"[PlayerSpawner] Applied lobby data: {lobbyData.playerName}, color: {lobbyData.playerColor}");
+                }
+            }
+        }
+
         spawnedPlayers++;
-        
-        Debug.Log($"PlayerSpawner: Spawned player for connection {conn.ClientId} at position {spawnPosition}");
+        Debug.Log($"[PlayerSpawner] Spawned player for connection {conn.ClientId} at {spawnPosition}");
     }
 }

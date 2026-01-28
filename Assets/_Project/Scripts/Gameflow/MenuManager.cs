@@ -6,7 +6,7 @@
 * Course: PRG - Game & Multimedia Design
 * Developer: Julian
 * Date: 2025-01-23
-* Version: 1.1 - Updated scene flow (Menu → Lobby → Game)
+* Version: 1.2 - Fixed PreferencesMenu integration (CanvasGroup visibility)
 *
 * WICHTIG: KOMMENTIERUNG NICHT LOESCHEN!
 *
@@ -34,16 +34,15 @@ public class MenuManager : MonoBehaviour
 {
     [Header("UI References")]
     public GameObject storyPopup;
-    public GameObject preferencesPopup;
+    [SerializeField] private PreferencesMenu preferencesMenu;
 
     /// <summary>
-    /// Start Game - Load Lobby scene for player setup
+    /// Start Game - Load Game scene (single-scene: Lobby + Game merged)
     /// </summary>
     public void StartGame()
     {
-        Debug.Log("[MenuManager] Loading Lobby scene...");
-        // SINGLE mode unloads current scene
-        SceneManager.LoadScene("Lobby", LoadSceneMode.Single);
+        Debug.Log("[MenuManager] Loading Game scene...");
+        SceneManager.LoadScene("Game", LoadSceneMode.Single);
     }
 
 
@@ -64,9 +63,9 @@ public class MenuManager : MonoBehaviour
     /// </summary>
     public void ShowPreferencesPopup()
     {
-        if (preferencesPopup != null)
+        if (preferencesMenu != null)
         {
-            preferencesPopup.SetActive(true);
+            preferencesMenu.ShowMenu();
             Debug.Log("[MenuManager] Preferences popup opened");
         }
     }

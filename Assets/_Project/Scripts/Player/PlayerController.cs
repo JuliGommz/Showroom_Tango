@@ -226,10 +226,38 @@ public class PlayerController : NetworkBehaviour
 
     private void OnColorChanged(Color prev, Color next, bool asServer)
     {
-        // Color now handled by NeonGlowController - do not override
+        // Apply tint to sprite renderers
+        ApplyColorTint(next);
     }
 
-    // Server-authority methods for setting synchronized variables
+    private void ApplyColorTint(Color color)
+    {
+        SpriteRenderer[] renderers = GetComponentsInChildren<SpriteRenderer>();
+        foreach (SpriteRenderer sr in renderers)
+        {
+            sr.color = color;
+        }
+    }
+
+    /// <summary>
+    /// Called by PlayerSpawner on server to apply Lobby name
+    /// </summary>
+    [Server]
+    public void ApplyName(string name)
+    {
+        playerName.Value = name;
+    }
+
+    /// <summary>
+    /// Called by PlayerSpawner on server to apply Lobby color choice
+    /// </summary>
+    [Server]
+    public void ApplyColor(Color color)
+    {
+        playerColor.Value = color;
+        ApplyColorTint(color);
+    }
+
     [ServerRpc]
     private void SetPlayerColorServerRpc(Color color)
     {

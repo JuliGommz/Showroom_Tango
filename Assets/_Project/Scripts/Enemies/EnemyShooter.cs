@@ -28,7 +28,8 @@ public class EnemyShooter : NetworkBehaviour
     [SerializeField] private float shootingRange = 15f; // Max range to shoot at player
 
     [Header("Combat Settings")]
-    [SerializeField] private float fireRate = 1.2f;
+    [SerializeField] private float fireRate = 2.5f;
+    [SerializeField] private int bulletCount = 5;
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private float bulletSpeed = 8f;
     [SerializeField] private int bulletDamage = 10;
@@ -60,6 +61,7 @@ public class EnemyShooter : NetworkBehaviour
     public override void OnStartServer()
     {
         base.OnStartServer();
+        Debug.Log($"[EnemyShooter] Spawned with fireRate={fireRate}, bulletCount will be 5");
         spawnTime = Time.time;
         isInitialized = false;
         FindNearestPlayer();
@@ -211,8 +213,7 @@ public class EnemyShooter : NetworkBehaviour
 
         lastFireTime = Time.time;
 
-        // Fire 5 bullets in 360° star pattern (evenly distributed)
-        int bulletCount = 5;
+        // Fire bullets in 360° star pattern (evenly distributed)
         float angleStep = 360f / bulletCount;
 
         for (int i = 0; i < bulletCount; i++)

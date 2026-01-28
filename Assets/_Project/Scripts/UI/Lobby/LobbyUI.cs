@@ -1,4 +1,4 @@
-/*
+﻿/*
 ====================================================================
 * LobbyUI - Main Lobby Screen Controller
 ====================================================================
@@ -169,7 +169,7 @@ public class LobbyUI : MonoBehaviour
             }
             else
             {
-                statusText.text = "Waiting for players to ready up...";
+                statusText.text = "Waiting for players...";
             }
         }
 
@@ -212,16 +212,18 @@ public class LobbyUI : MonoBehaviour
         {
             if (secondsRemaining > 0)
             {
-                countdownText.text = $"Starting in {secondsRemaining}...";
+                countdownText.text = secondsRemaining.ToString();  // ← Just the number
                 Debug.Log($"[LobbyUI] Countdown: {secondsRemaining}");
             }
             else
             {
-                countdownText.text = "GO!";
-                Debug.Log("[LobbyUI] Countdown: GO!");
+                countdownText.text = "";  // ← Hide at 0 (or keep "GO!" if you like it)
+                Debug.Log("[LobbyUI] Countdown: Complete");
             }
         }
     }
+
+
 
     private void OnRankingsButtonClicked()
     {

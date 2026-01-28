@@ -41,36 +41,46 @@ public class WeaponManager : NetworkBehaviour
 
     void Start()
     {
-        // Get PlayerHealth reference
         playerHealth = GetComponent<PlayerHealth>();
 
-        // Initialize fire times
         foreach (var weapon in equippedWeapons)
         {
             weaponLastFireTime[weapon] = 0f;
         }
 
-        // Auto-find BulletPool if not assigned
         if (bulletPool == null)
         {
-            // Find ALL bullet pools, then select player pool by name
-            BulletPool[] allPools = FindObjectsByType<BulletPool>(FindObjectsSortMode.None);
+            StartCoroutine(FindBulletPoolDelayed());
+        }
+    }
 
+    private System.Collections.IEnumerator FindBulletPoolDelayed()
+    {
+        // Wait for scene NetworkObjects to initialize
+        float timeout = 5f;
+        float elapsed = 0f;
+
+        while (bulletPool == null && elapsed < timeout)
+        {
+            BulletPool[] allPools = FindObjectsByType<BulletPool>(FindObjectsSortMode.None);
             foreach (BulletPool pool in allPools)
             {
                 if (pool.gameObject.name.Contains("Player"))
                 {
                     bulletPool = pool;
-                    Debug.Log($"[WeaponManager] Player BulletPool auto-found: {pool.gameObject.name}");
-                    break;
+                    Debug.Log($"[WeaponManager] Player BulletPool found: {pool.gameObject.name}");
+                    yield break;
                 }
             }
 
-            if (bulletPool == null)
-            {
-                Debug.LogError("[WeaponManager] Player BulletPool not found in scene! Weapon system disabled.");
-                enabled = false;
-            }
+            elapsed += 0.5f;
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        if (bulletPool == null)
+        {
+            Debug.LogError("[WeaponManager] Player BulletPool not found after timeout! Weapon system disabled.");
+            enabled = false;
         }
     }
 

@@ -19,7 +19,15 @@
       "Bash(git restore:*)",
       "Bash(reg query \"HKCU\\\\Software\\\\Unity Technologies\\\\Unity Editor 6.x\" /s)",
       "Bash(reg query \"HKCU\\\\SOFTWARE\\\\Unity Technologies\\\\Unity Editor 6.x\")",
-      "Bash(reg query \"HKCU\\\\SOFTWARE\\\\Unity Technologies\")"
+      "Bash(reg query \"HKCU\\\\SOFTWARE\\\\Unity Technologies\")",
+      "Bash(python3:*)",
+      "Bash(py:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(\"C:/xampp/mysql/bin/mysql.exe\" -u root -e \"SELECT 1\")",
+      "Bash(\"C:/xampp/mysql/bin/mysql.exe\" -u root -e \"USE showroomtango_scores; SELECT * FROM highscores;\")",
+      "Bash(\"C:/xampp/mysql/bin/mysql.exe\" -u root -e \"USE showroomtango_scores; DELETE FROM highscores WHERE player_name=''CurlTest'';\")",
+      "Bash(\"C:/xampp/mysql/bin/mysql.exe\" -u root -e \"USE showroomtango_scores; SELECT COUNT\\(*\\) as rows_count FROM highscores;\")"
     ]
   }
 }

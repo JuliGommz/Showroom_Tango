@@ -6,7 +6,7 @@
 * Course: PRG - Game & Multimedia Design
 * Developer: Julian
 * Date: 2025-01-22
-* Version: 1.0 - Wave transition countdown implementation
+* Version: 1.1 - Event-driven wave detection (replaces polling)
 *
 * WICHTIG: KOMMENTIERUNG NICHT LOESCHEN!
 * Diese detaillierte Authorship-Dokumentation ist fuer die akademische
@@ -16,28 +16,26 @@
 *
 * [HUMAN-AUTHORED]
 * - Requirement for wave transition feedback
-* - 5-second countdown matching wave delay
+* - Countdown duration matching wave delay
 * - Text-only approach
 *
 * [AI-ASSISTED]
+* - Event-driven wave cleared detection (EnemySpawner.OnWaveCleared)
 * - Countdown coroutine implementation
-* - UI fade and text updates
-* - Event subscription pattern
+* - UI text updates
 * - Academic header formatting
 *
 * [AI-GENERATED]
 * - None
 *
 * DEPENDENCIES:
-* - UnityEngine.UI (Unity UI system)
 * - TMPro (TextMeshPro)
-* - EnemySpawner (for wave events)
+* - EnemySpawner (OnWaveCleared event)
 *
 * NOTES:
-* - Displays "NEXT WAVE IN X..." countdown for 5 seconds
-* - Matches existing 5-second delay between waves
-* - Uses project color palette (Magenta/Cyan)
-* - No changes to wave timing
+* - Subscribes to EnemySpawner.OnWaveCleared event (fires when all enemies dead)
+* - Displays "NEXT WAVE IN X..." countdown for 3 seconds
+* - Only shows between waves, not after final wave
 ====================================================================
 */
 
@@ -52,112 +50,81 @@ public class WaveTransitionUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI countdownText;
 
     [Header("Settings")]
-    [SerializeField] private float countdownDuration = 5f; // Match EnemySpawner delay
+    [SerializeField] private int countdownSeconds = 3;
     [SerializeField] private Color textColor = new Color(0.667f, 0f, 0.784f, 1f); // Magenta
 
     private EnemySpawner enemySpawner;
-    private int lastObservedWave = 0;
-    private bool lastWaveActiveState = false;
-    private bool countdownShown = false;
 
     void Start()
     {
-        // Validate Inspector references
         if (countdownPanel == null)
         {
-            Debug.LogError("[WaveTransitionUI] SETUP REQUIRED: 'Countdown Panel' not assigned in Inspector! Select WaveCountdownPanel GameObject in Hierarchy → Inspector → assign countdownPanel field");
+            Debug.LogError("[WaveTransitionUI] countdownPanel not assigned in Inspector!");
             enabled = false;
             return;
         }
 
         if (countdownText == null)
         {
-            Debug.LogError("[WaveTransitionUI] SETUP REQUIRED: 'Countdown Text' not assigned in Inspector! Select WaveCountdownPanel GameObject in Hierarchy → Inspector → assign countdownText field (TextMeshProUGUI component)");
+            Debug.LogError("[WaveTransitionUI] countdownText not assigned in Inspector!");
             enabled = false;
             return;
         }
 
-        // Initialize UI
         countdownPanel.SetActive(false);
         countdownText.color = textColor;
-        Debug.Log("[WaveTransitionUI] Initialized - countdown panel hidden, waiting for EnemySpawner");
     }
 
-    void Update()
+    void OnEnable()
     {
-        // Lazy-find EnemySpawner (handles network spawn timing)
-        if (enemySpawner == null)
+        StartCoroutine(SubscribeWhenReady());
+    }
+
+    void OnDisable()
+    {
+        if (enemySpawner != null)
+        {
+            enemySpawner.OnWaveCleared -= HandleWaveCleared;
+        }
+    }
+
+    private IEnumerator SubscribeWhenReady()
+    {
+        // Wait for EnemySpawner to exist
+        while (enemySpawner == null)
         {
             enemySpawner = FindAnyObjectByType<EnemySpawner>();
             if (enemySpawner != null)
             {
-                Debug.Log("[WaveTransitionUI] EnemySpawner found! Starting wave monitoring");
-                lastObservedWave = enemySpawner.GetCurrentWave();
-                lastWaveActiveState = enemySpawner.IsWaveActive();
+                enemySpawner.OnWaveCleared += HandleWaveCleared;
+                Debug.Log("[WaveTransitionUI] Subscribed to EnemySpawner.OnWaveCleared");
+                yield break;
             }
-            return;
+            yield return new WaitForSeconds(0.5f);
         }
-
-        // Monitor wave state changes
-        int currentWave = enemySpawner.GetCurrentWave();
-        bool currentWaveActive = enemySpawner.IsWaveActive();
-
-        // DETECTION LOGIC: Wave just finished (active → inactive transition)
-        if (lastWaveActiveState == true && currentWaveActive == false)
-        {
-            Debug.Log($"[WaveTransitionUI] WAVE {currentWave} COMPLETED! (active→inactive detected)");
-
-            // Show countdown if not the final wave
-            if (currentWave < 3)
-            {
-                Debug.Log($"[WaveTransitionUI] ✅ Triggering countdown for next wave ({currentWave + 1})");
-                StartCoroutine(ShowWaveTransition(currentWave + 1));
-                countdownShown = true;
-            }
-            else
-            {
-                Debug.Log($"[WaveTransitionUI] ℹ️ Final wave complete - no countdown needed");
-            }
-        }
-
-        // DETECTION LOGIC: New wave started (wave number increased)
-        if (currentWave > lastObservedWave)
-        {
-            Debug.Log($"[WaveTransitionUI] NEW WAVE STARTED: {lastObservedWave} → {currentWave}");
-            countdownShown = false; // Reset for next transition
-        }
-
-        // Update tracking variables
-        lastObservedWave = currentWave;
-        lastWaveActiveState = currentWaveActive;
     }
 
-    private IEnumerator ShowWaveTransition(int nextWave)
+    private void HandleWaveCleared(int clearedWave)
     {
-        Debug.Log($"[WaveTransitionUI] ━━━ COUNTDOWN START ━━━ Next Wave: {nextWave}");
+        if (enemySpawner == null) return;
 
-        // Show panel
+        // Only show countdown if there are more waves
+        if (clearedWave < enemySpawner.GetMaxWaves())
+        {
+            StartCoroutine(ShowCountdown(clearedWave + 1));
+        }
+    }
+
+    private IEnumerator ShowCountdown(int nextWave)
+    {
         countdownPanel.SetActive(true);
-        Debug.Log($"[WaveTransitionUI] Panel visible: {countdownPanel.activeSelf}");
 
-        // Countdown from duration to 1
-        for (int i = (int)countdownDuration; i > 0; i--)
+        for (int i = countdownSeconds; i > 0; i--)
         {
             countdownText.text = $"NEXT WAVE IN {i}...";
-            Debug.Log($"[WaveTransitionUI] 🔢 Display: \"{countdownText.text}\" (Panel active: {countdownPanel.activeSelf})");
             yield return new WaitForSeconds(1f);
         }
 
-        // Hide panel
         countdownPanel.SetActive(false);
-        Debug.Log($"[WaveTransitionUI] ━━━ COUNTDOWN END ━━━ Panel hidden");
-    }
-
-    /// <summary>
-    /// Manually trigger countdown (for testing or special cases)
-    /// </summary>
-    public void TriggerCountdown(int nextWaveNumber)
-    {
-        StartCoroutine(ShowWaveTransition(nextWaveNumber));
     }
 }

@@ -1,0 +1,66 @@
+# Risiko-Matrix & Mitigation-Strategien
+
+**Letzte Aktualisierung**: 2026-01-27
+**Status**: Post-Implementation Review
+
+---
+
+## Risiko-Klassifizierung
+
+**Schweregrad-Definition**:
+- KRITISCH: Gefaehrdet Projekt-Abschluss (>= 40 Punkte Verlust)
+- HOCH: Grosse Zeit-/Punkte-Einbussen (20-39 Punkte)
+- MITTEL: Verzoegerungen, aber manageable (10-19 Punkte)
+- NIEDRIG: Minimaler Impact (< 10 Punkte)
+
+---
+
+## Risiko-Tracking-Tabelle (Updated 2026-01-27)
+
+| ID | Risiko | Schweregrad | Status | Notizen |
+|----|--------|-------------|--------|---------|
+| R1 | FishNet Authority | KRITISCH | MITIGIERT | Server-auth working, ownership correct |
+| R2 | Bullet-Sync | KRITISCH | MITIGIERT | Object pooling (Player+Enemy), server-side hit detection |
+| R3 | PHP/SQL Backend | KRITISCH | OFFEN | PHP files ready, XAMPP deploy pending (Tier 1 task) |
+| R4 | Enemy-AI | HOCH | MITIGIERT | 2 types working: Chaser + Shooter |
+| R5 | Boss/Waves | HOCH | MITIGIERT | Wave system chosen and implemented (5 waves) |
+| R6 | Git-Merge | HOCH | N/A | Solo development, no merge conflicts |
+| R7 | Unity 6 Bugs | MITTEL | MITIGIERT | No major compatibility issues found |
+| R8 | Performance | MITTEL | MITIGIERT | Pooling in place, stable FPS |
+| R9 | Scope-Creep | MITTEL | MITIGIERT | Feature scope locked (Power-Ups, Complex Patterns, Coop NOT implementing) |
+| R10 | README | NIEDRIG | OFFEN | Needs final update to reflect current state (Tier 1 task) |
+
+**Legende**:
+- OFFEN: Risiko aktiv, action needed
+- MITIGIERT: Massnahmen erfolgreich, Risiko reduziert
+- N/A: Not applicable
+
+---
+
+## Remaining Active Risks
+
+### R3: PHP/SQL Backend (OFFEN)
+- PHP scripts exist in Documentation/PHP_Backend/
+- database_setup.sql, submit_score.php, get_highscores.php ready
+- XAMPP setup and deployment still pending
+- Affects 10 points (HUD & Score category)
+- Fallback: JSON persistence exists
+
+### R10: README.md (OFFEN)
+- README exists but needs final update
+- Must document: RPCs, SyncVars, Bullet-Logik, Gegner-Logik, Persistence, Bonus features
+- Required for grading (Pflichtbestandteil)
+
+---
+
+## Resolved Risks Summary
+
+All other risks (R1, R2, R4-R9) have been successfully mitigated through implementation.
+Key mitigations applied:
+- Server-authoritative architecture (R1, R9)
+- Object pooling from the start (R2, R8)
+- Simple but effective enemy AI: Chaser + Shooter (R4)
+- Wave system over Boss (R5)
+- Solo development eliminated merge risk (R6)
+- Unity 6 + FishNet proved compatible (R7)
+- Feature scope controlled via priority tiers (R9)

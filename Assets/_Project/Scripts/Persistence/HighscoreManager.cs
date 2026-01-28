@@ -53,8 +53,8 @@ public class HighscoreManager : MonoBehaviour
     public static HighscoreManager Instance { get; private set; }
 
     [Header("Backend Configuration")]
-    [SerializeField] private string submitScoreURL = "http://localhost/bullethell/submit_score.php";
-    [SerializeField] private string getHighscoresURL = "http://localhost/bullethell/get_highscores.php";
+    [SerializeField] private string submitScoreURL = "http://localhost/showroomtango/submit_score.php";
+    [SerializeField] private string getHighscoresURL = "http://localhost/showroomtango/get_highscores.php";
 
     [Header("Fallback: JSON Local Storage")]
     [SerializeField] private bool useJSONFallback = false;
