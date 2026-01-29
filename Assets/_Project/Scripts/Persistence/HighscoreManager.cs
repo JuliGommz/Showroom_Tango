@@ -1,27 +1,35 @@
 /*
 ====================================================================
-* HighscoreManager.cs - PHP/SQL Highscore Integration
+* HighscoreManager - PHP/SQL Highscore Integration
 ====================================================================
 * Project: Showroom_Tango
-* Course: PRG - Game & Multimedia Design SRH Hochschule
-* Developer: Julian Gomez
+* Course: PRG - Game & Multimedia Design
+* Developer: Julian
 * Date: 2025-01-20
 * Version: 1.0
-*
+* 
 * ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
-*
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
+* 
 * [HUMAN-AUTHORED]
 * - PHP/SQL backend requirement (mandatory)
 * - Top 10 highscore list
-*
+* 
 * [AI-ASSISTED]
 * - UnityWebRequest implementation
 * - JSON serialization/deserialization
 * - Async callback pattern
-*
+* 
 * [AI-GENERATED]
 * - Complete backend integration logic
-*
+* 
+* DEPENDENCIES:
+* - UnityEngine.Networking (UnityWebRequest)
+* - System.Collections (IEnumerator)
+* 
 * BACKEND SETUP REQUIRED:
 * 1. PHP scripts (submit_score.php, get_highscores.php)
 * 2. MySQL database table
@@ -67,7 +75,7 @@ public class HighscoreManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            transform.SetParent(null); // Ensure root-level GameObject
+            transform.SetParent(null);
             DontDestroyOnLoad(gameObject);
         }
         else
@@ -76,9 +84,6 @@ public class HighscoreManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Submit score to PHP backend or JSON file
-    /// </summary>
     public void SubmitScore(string playerName, int score)
     {
         if (useJSONFallback)
@@ -91,9 +96,6 @@ public class HighscoreManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Get highscores from PHP backend or JSON file
-    /// </summary>
     public void LoadHighscores(System.Action<List<HighscoreEntry>> callback)
     {
         if (useJSONFallback)
@@ -105,8 +107,6 @@ public class HighscoreManager : MonoBehaviour
             StartCoroutine(LoadHighscoresPHP(callback));
         }
     }
-
-    // ======== PHP/SQL BACKEND ========
 
     private IEnumerator SubmitScorePHP(string playerName, int score)
     {
@@ -120,8 +120,7 @@ public class HighscoreManager : MonoBehaviour
 
             if (www.result == UnityWebRequest.Result.Success)
             {
-                Debug.Log($"[HighscoreManager] Score submitted: {playerName} - {score}");
-                Debug.Log($"[HighscoreManager] Response: {www.downloadHandler.text}");
+                // Success - no verbose logging needed
             }
             else
             {
@@ -140,10 +139,10 @@ public class HighscoreManager : MonoBehaviour
             if (www.result == UnityWebRequest.Result.Success)
             {
                 string json = www.downloadHandler.text;
-                Debug.Log($"[HighscoreManager] Received: {json}");
 
-                // Parse JSON (format: {"entries": [...]})
-                HighscoreList list = JsonUtility.FromJson<HighscoreList>($"{{\"entries\":{json}}}");
+                // Wrap JSON array in object format for JsonUtility (using verbatim string)
+                string wrappedJson = @"{""entries"":" + json + "}";
+                HighscoreList list = JsonUtility.FromJson<HighscoreList>(wrappedJson);
 
                 if (list != null && list.entries != null)
                 {
@@ -164,8 +163,6 @@ public class HighscoreManager : MonoBehaviour
         }
     }
 
-    // ======== JSON FALLBACK ========
-
     private void SubmitScoreJSON(string playerName, int score)
     {
         List<HighscoreEntry> entries = LoadHighscoresJSON();
@@ -179,23 +176,21 @@ public class HighscoreManager : MonoBehaviour
 
         entries.Add(newEntry);
 
-        // Sort by score descending
+        // Sort descending by score
         entries.Sort((a, b) => b.score.CompareTo(a.score));
 
-        // Keep top 10
+        // Keep top 10 only
         if (entries.Count > 10)
         {
             entries.RemoveRange(10, entries.Count - 10);
         }
 
-        // Save to file
+        // Save to persistent storage
         HighscoreList list = new HighscoreList { entries = entries };
         string json = JsonUtility.ToJson(list, true);
-
         string path = System.IO.Path.Combine(Application.persistentDataPath, jsonFilePath);
         System.IO.File.WriteAllText(path, json);
 
-        Debug.Log($"[HighscoreManager] Score saved to JSON: {playerName} - {score}");
         cachedHighscores = entries;
     }
 
@@ -213,8 +208,6 @@ public class HighscoreManager : MonoBehaviour
 
         return list != null && list.entries != null ? list.entries : new List<HighscoreEntry>();
     }
-
-    // ======== PUBLIC GETTERS ========
 
     public List<HighscoreEntry> GetCachedHighscores() => cachedHighscores;
 }

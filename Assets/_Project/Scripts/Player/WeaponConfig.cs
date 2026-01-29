@@ -1,20 +1,40 @@
 /*
 ====================================================================
-* WeaponConfig.cs - Weapon Data Configuration (ScriptableObject)
+* WeaponConfig - Weapon Data Configuration (ScriptableObject)
 ====================================================================
 * Project: Showroom_Tango
-* Developer: Julian Gomez
+* Course: Game & Multimedia Design
+* Developer: Julian
 * Date: 2025-01-08
 * Version: 1.0
+* 
+* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
 * 
 * [HUMAN-AUTHORED]
 * - 3-weapon slot design decision
 * - Bullet sprite assignments
 * - Fire rate values
+* - Upgrade increment values (0.05 fire rate, 0.03 cooldown)
 * 
 * [AI-ASSISTED]
 * - ScriptableObject pattern implementation
 * - Upgrade stat structure
+* - Runtime stat calculation properties
+* 
+* [AI-GENERATED]
+* - None
+* 
+* DEPENDENCIES:
+* - UnityEngine (ScriptableObject)
+* 
+* NOTES:
+* - ScriptableObject for data-driven weapon design
+* - Runtime upgrades tracked via non-serialized fields
+* - Current stats calculated dynamically from base + upgrades
 ====================================================================
 */
 
@@ -37,7 +57,7 @@ public class WeaponConfig : ScriptableObject
     public Vector2 firePointOffset = Vector2.zero;
     public float directionAngleOffset = 0f;
 
-    // Runtime upgrade tracking (not serialized)
+    // Runtime upgrade tracking (not persisted)
     [System.NonSerialized] public int fireRateUpgrades = 0;
     [System.NonSerialized] public int cooldownUpgrades = 0;
 

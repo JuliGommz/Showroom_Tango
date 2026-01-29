@@ -1,3 +1,41 @@
+/*
+====================================================================
+* AutoStartNetwork - Automatic Network Connection Starter
+====================================================================
+* Project: Showroom_Tango
+* Course: Game & Multimedia Design
+* Developer: Julian
+* Date: 2025-12-17
+* Version: 1.0
+* 
+* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
+* 
+* [HUMAN-AUTHORED]
+* - Auto-start concept (Host vs Client mode)
+* - Fallback strategy (Host -> Client if port busy)
+* - Skip logic for persistent NetworkManager
+* 
+* [AI-ASSISTED]
+* - Coroutine delay pattern for server binding check
+* - NetworkManager lifecycle checks
+* 
+* [AI-GENERATED]
+* - Complete implementation structure
+* 
+* DEPENDENCIES:
+* - FishNet.Managing (NetworkManager)
+* 
+* NOTES:
+* - Automatically starts network on scene load
+* - Falls back to client if server port already in use
+* - Prevents double-start if NetworkManager persists across scenes
+====================================================================
+*/
+
 using UnityEngine;
 using FishNet.Managing;
 using System.Collections;
@@ -17,10 +55,8 @@ public class AutoStartNetwork : MonoBehaviour
             return;
         }
 
-        // Skip if already connected (scene was reloaded or NetworkManager persisted)
         if (nm.IsServerStarted || nm.IsClientStarted)
         {
-            Debug.Log("[AutoStartNetwork] Network already active - skipping auto-start");
             return;
         }
 
@@ -31,27 +67,23 @@ public class AutoStartNetwork : MonoBehaviour
         else
         {
             nm.ClientManager.StartConnection();
-            Debug.Log("[AutoStartNetwork] Started as CLIENT only");
         }
     }
 
     private IEnumerator StartAsHostWithFallback(NetworkManager nm)
     {
-        // Attempt to start server
         nm.ServerManager.StartConnection();
 
-        // Wait a frame for server to attempt binding
+        // Wait for server binding attempt to complete
         yield return new WaitForSeconds(0.5f);
 
         if (nm.IsServerStarted)
         {
-            // Server started successfully - also start client (host mode)
             nm.ClientManager.StartConnection();
-            Debug.Log("[AutoStartNetwork] Started as HOST (server + client)");
         }
         else
         {
-            // Server failed (port in use) - fall back to client-only
+            // Fallback to client if port in use
             Debug.LogWarning("[AutoStartNetwork] Server failed to start (port in use?) - falling back to CLIENT only");
             nm.ClientManager.StartConnection();
         }

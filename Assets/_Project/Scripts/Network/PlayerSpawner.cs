@@ -1,32 +1,46 @@
 /*
 ====================================================================
-* PlayerSpawner - Spawns Players When Game Starts
+* PlayerSpawner - Player Spawning System
 ====================================================================
-* Project: Showroom_Tango (2-Player Top-Down Bullet-Hell)
-* Course: PRG - Game & Multimedia Design
+* Project: Showroom_Tango
+* Course: Game & Multimedia Design
 * Developer: Julian
-* Date: 18.12.2025
-* Version: 2.0 - Single-scene: spawns on state change, not scene load
-*
-* WICHTIG: KOMMENTIERUNG NICHT LOESCHEN!
-*
+* Date: 2025-12-18
+* Version: 2.0
+* 
+* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
+* 
 * [HUMAN-AUTHORED]
 * - Auto-spawn strategy on game start
-* - Spawn point positioning
+* - Spawn point positioning (2-unit offset)
 * - Single-scene architecture decision
-*
+* 
 * [AI-ASSISTED]
 * - FishNet server connection event handling
 * - Server-authority spawn pattern
 * - GameStateManager event subscription
-*
+* - LobbyManager data integration
+* 
 * [AI-GENERATED]
-* - None
-*
+* - Complete NetworkConnection iteration
+* - Player data application pattern
+* 
+* DEPENDENCIES:
+* - FishNet.Managing (NetworkManager)
+* - FishNet.Connection (NetworkConnection)
+* - GameStateManager (state change events)
+* - LobbyManager (player customization data)
+* - PlayerController (name/color application)
+* 
 * NOTES:
 * - Spawns players when GameState transitions to Playing
-* - Reads player data from LobbyManager (same scene, no caching needed)
+* - Reads player data from LobbyManager (same scene)
 * - Despawn handled by GameStateManager restart sequence
+* - Retry mechanism for GameStateManager subscription
 ====================================================================
 */
 
@@ -46,7 +60,6 @@ public class PlayerSpawner : MonoBehaviour
     void Start()
     {
         networkManager = FindFirstObjectByType<NetworkManager>();
-
         if (networkManager == null)
         {
             Debug.LogError("[PlayerSpawner] NetworkManager not found!");
@@ -59,14 +72,13 @@ public class PlayerSpawner : MonoBehaviour
             return;
         }
 
-        // Subscribe to game state changes
         if (GameStateManager.Instance != null)
         {
             GameStateManager.Instance.OnGameStateChanged += OnGameStateChanged;
         }
         else
         {
-            // Retry after a short delay if GameStateManager isn't ready yet
+            // Retry if GameStateManager not ready (initialization race condition)
             Invoke(nameof(SubscribeToGameState), 0.5f);
         }
     }
@@ -98,7 +110,6 @@ public class PlayerSpawner : MonoBehaviour
         }
         else if (newState == GameState.Lobby)
         {
-            // Reset for next round
             hasSpawnedThisRound = false;
             spawnedPlayers = 0;
         }
@@ -109,8 +120,6 @@ public class PlayerSpawner : MonoBehaviour
         hasSpawnedThisRound = true;
         spawnedPlayers = 0;
 
-        Debug.Log("[PlayerSpawner] Game started - spawning players for all connections");
-
         foreach (NetworkConnection conn in networkManager.ServerManager.Clients.Values)
         {
             if (conn.IsActive)
@@ -118,18 +127,15 @@ public class PlayerSpawner : MonoBehaviour
                 SpawnPlayerForConnection(conn);
             }
         }
-
-        Debug.Log($"[PlayerSpawner] Spawned {spawnedPlayers} players");
     }
 
     private void SpawnPlayerForConnection(NetworkConnection conn)
     {
         Vector3 spawnPosition = spawnOffset * spawnedPlayers;
-
         GameObject playerInstance = Instantiate(playerPrefab, spawnPosition, Quaternion.identity);
         networkManager.ServerManager.Spawn(playerInstance, conn);
 
-        // Apply Lobby data directly from LobbyManager (same scene, no caching needed)
+        // Apply lobby customization data (name, color)
         if (LobbyManager.Instance != null)
         {
             var playerData = LobbyManager.Instance.GetPlayerData();
@@ -140,12 +146,10 @@ public class PlayerSpawner : MonoBehaviour
                 {
                     controller.ApplyName(lobbyData.playerName);
                     controller.ApplyColor(lobbyData.playerColor);
-                    Debug.Log($"[PlayerSpawner] Applied lobby data: {lobbyData.playerName}, color: {lobbyData.playerColor}");
                 }
             }
         }
 
         spawnedPlayers++;
-        Debug.Log($"[PlayerSpawner] Spawned player for connection {conn.ClientId} at {spawnPosition}");
     }
 }

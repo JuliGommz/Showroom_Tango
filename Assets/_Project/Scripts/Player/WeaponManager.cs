@@ -1,11 +1,18 @@
-﻿/*
+/*
 ====================================================================
-* WeaponManager.cs - Multi-Weapon System Controller
+* WeaponManager - Multi-Weapon System Controller
 ====================================================================
 * Project: Showroom_Tango
-* Developer: Julian Gomez
+* Course: Game & Multimedia Design
+* Developer: Julian
 * Date: 2025-01-08
-* Version: 1.1 - Fixed projectile spawn offset (now uses local space)
+* Version: 1.1
+* 
+* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
 * 
 * [HUMAN-AUTHORED]
 * - 3-weapon slot limitation
@@ -16,6 +23,22 @@
 * - Auto-targeting implementation
 * - Weapon slot management
 * - Enemy proximity detection with sorting
+* - Local space projectile offset calculation
+* 
+* [AI-GENERATED]
+* - Complete NetworkBehaviour integration
+* - BulletPool delayed finding pattern
+* 
+* DEPENDENCIES:
+* - FishNet.Object (NetworkBehaviour)
+* - BulletPool (object pooling)
+* - WeaponConfig (ScriptableObject data)
+* - PlayerHealth (death state checking)
+* 
+* NOTES:
+* - Auto-fire system (no manual shooting required)
+* - Priority-based targeting distributes fire across multiple enemies
+* - Local space offset ensures proper bullet positioning regardless of rotation
 ====================================================================
 */
 
@@ -30,7 +53,7 @@ public class WeaponManager : NetworkBehaviour
     [SerializeField] private List<WeaponConfig> equippedWeapons = new List<WeaponConfig>();
 
     [Header("References")]
-    [SerializeField] private BulletPool bulletPool; // ASSIGN IN INSPECTOR
+    [SerializeField] private BulletPool bulletPool;
     [SerializeField] private Transform playerTransform;
 
     [Header("Enemy Detection")]
@@ -56,7 +79,7 @@ public class WeaponManager : NetworkBehaviour
 
     private System.Collections.IEnumerator FindBulletPoolDelayed()
     {
-        // Wait for scene NetworkObjects to initialize
+        // Wait for NetworkObjects to initialize (race condition fix)
         float timeout = 5f;
         float elapsed = 0f;
 
@@ -68,7 +91,6 @@ public class WeaponManager : NetworkBehaviour
                 if (pool.gameObject.name.Contains("Player"))
                 {
                     bulletPool = pool;
-                    Debug.Log($"[WeaponManager] Player BulletPool found: {pool.gameObject.name}");
                     yield break;
                 }
             }
@@ -88,7 +110,6 @@ public class WeaponManager : NetworkBehaviour
     {
         if (!IsOwner) return;
 
-        // Don't shoot if dead
         if (playerHealth != null && playerHealth.IsDead()) return;
 
         AutoFireAllWeapons();
@@ -96,33 +117,27 @@ public class WeaponManager : NetworkBehaviour
 
     private void AutoFireAllWeapons()
     {
-        // Fire each weapon at priority target
         for (int i = 0; i < equippedWeapons.Count; i++)
         {
             WeaponConfig weapon = equippedWeapons[i];
 
-            // Check cooldown
             if (Time.time < weaponLastFireTime[weapon] + weapon.CurrentFireRate) continue;
 
-            // Find enemies in THIS weapon's range
             List<GameObject> enemiesInRange = FindEnemiesInRange(weapon.range);
             if (enemiesInRange.Count == 0) continue;
 
-            // Get target based on weapon priority
             GameObject target = GetTargetForWeapon(i, enemiesInRange);
             if (target == null) continue;
 
-            // Calculate fire position with offset (rotated to player's local space)
+            // Transform offset to player's local space
             Vector3 rotatedOffset = playerTransform.TransformDirection(weapon.firePointOffset);
             Vector3 firePosition = playerTransform.position + rotatedOffset;
 
-            // Calculate direction to target with angle offset
             Vector2 directionToTarget = (target.transform.position - firePosition).normalized;
             float baseAngle = Mathf.Atan2(directionToTarget.y, directionToTarget.x) * Mathf.Rad2Deg;
             float finalAngle = baseAngle + weapon.directionAngleOffset;
-            Quaternion rotation = Quaternion.Euler(0, 0, finalAngle - 90f); // -90 because sprite points up
+            Quaternion rotation = Quaternion.Euler(0, 0, finalAngle - 90f);
 
-            // Fire weapon
             weaponLastFireTime[weapon] = Time.time;
             FireWeaponServerRpc(firePosition, rotation, weapon.bulletSprite.name);
         }
@@ -145,7 +160,7 @@ public class WeaponManager : NetworkBehaviour
             }
         }
 
-        // Sort by distance (nearest first)
+        // Sort by distance for priority targeting
         enemies = enemies.OrderBy(e =>
             Vector2.Distance(playerTransform.position, e.transform.position)
         ).ToList();
@@ -155,14 +170,9 @@ public class WeaponManager : NetworkBehaviour
 
     private GameObject GetTargetForWeapon(int weaponIndex, List<GameObject> enemies)
     {
-        // Priority system:
-        // Weapon 0: nearest enemy
-        // Weapon 1: 2nd nearest (or nearest if only 1)
-        // Weapon 2: 3rd nearest (or nearest if only 1-2)
-
+        // Fallback to nearest if more weapons than enemies
         if (weaponIndex >= enemies.Count)
         {
-            // More weapons than enemies - target nearest
             return enemies[0];
         }
 
@@ -179,10 +189,8 @@ public class WeaponManager : NetworkBehaviour
         }
 
         GameObject bullet = bulletPool.GetBullet(position, rotation);
-
         if (bullet != null)
         {
-            // Set correct sprite for this weapon
             SpriteRenderer sr = bullet.GetComponent<SpriteRenderer>();
             if (sr != null)
             {
@@ -193,14 +201,11 @@ public class WeaponManager : NetworkBehaviour
             Bullet bulletScript = bullet.GetComponent<Bullet>();
             if (bulletScript != null)
             {
-                bulletScript.Initialize(bulletPool, gameObject); // Pass this player as owner
+                bulletScript.Initialize(bulletPool, gameObject);
             }
         }
     }
 
-    /// <summary>
-    /// Adds weapon to next available slot (max 3)
-    /// </summary>
     public bool AddWeapon(WeaponConfig weapon)
     {
         if (equippedWeapons.Count >= 3)
@@ -211,31 +216,22 @@ public class WeaponManager : NetworkBehaviour
 
         equippedWeapons.Add(weapon);
         weaponLastFireTime[weapon] = Time.time;
-        Debug.Log($"Weapon added: {weapon.weaponName}");
         return true;
     }
 
-    /// <summary>
-    /// Upgrades fire rate for all weapons
-    /// </summary>
     public void UpgradeFireRate()
     {
         foreach (var weapon in equippedWeapons)
         {
             weapon.fireRateUpgrades++;
         }
-        Debug.Log("Fire rate upgraded!");
     }
 
-    /// <summary>
-    /// Upgrades cooldown for all weapons
-    /// </summary>
     public void UpgradeCooldown()
     {
         foreach (var weapon in equippedWeapons)
         {
             weapon.cooldownUpgrades++;
         }
-        Debug.Log("Cooldown upgraded!");
     }
 }

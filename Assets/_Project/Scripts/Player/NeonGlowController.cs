@@ -1,22 +1,39 @@
-﻿/*
+/*
 ====================================================================
-* NeonGlowController.cs - Dual-Sprite Neon-Glow System
+* NeonGlowController - Dual-Sprite Neon-Glow System
 ====================================================================
 * Project: Showroom_Tango
-* Course: PRG - Game & Multimedia Design SRH Hochschule
-* Developer: Julian Gomez
+* Course: Game & Multimedia Design
+* Developer: Julian
 * Date: 2025-01-08
-* Version: 1.1 - Sprite-swapping system for prototype
+* Version: 1.1
 * 
 * ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
 * 
 * [HUMAN-AUTHORED]
 * - Design decision: 3 colors for prototype (Blue/Green/Yellow)
 * - Sprite-swapping approach instead of tinting
+* - Pulsing animation concept
 * 
 * [AI-ASSISTED]
-* - Implementation of sprite reference system
+* - Sprite reference system implementation
 * - Color-to-sprite mapping logic
+* - Pulsing animation math (sine wave)
+* 
+* [AI-GENERATED]
+* - Complete glow scaling system
+* 
+* DEPENDENCIES:
+* - UnityEngine (MonoBehaviour)
+* 
+* NOTES:
+* - Dual-sprite system: Fill (solid) + Glow (transparent outer)
+* - Glow sprite scaled larger and placed behind fill
+* - Optional pulsing animation via sine wave
 ====================================================================
 */
 
@@ -94,14 +111,10 @@ public class NeonGlowController : MonoBehaviour
         glowRenderer.color = glowColor;
     }
 
-    /// <summary>
-    /// Applies color choice by swapping sprite and setting glow color
-    /// </summary>
     public void ApplyColorChoice(NeonColorType colorType)
     {
         selectedColor = colorType;
 
-        // Swap sprite based on color
         switch (colorType)
         {
             case NeonColorType.Blue:
@@ -110,7 +123,7 @@ public class NeonGlowController : MonoBehaviour
                     fillRenderer.sprite = ufoBlue;
                     glowRenderer.sprite = ufoBlue;
                 }
-                SetGlowColor(blueGlowColor); // Uses Inspector value
+                SetGlowColor(blueGlowColor);
                 break;
 
             case NeonColorType.Green:
@@ -119,7 +132,7 @@ public class NeonGlowController : MonoBehaviour
                     fillRenderer.sprite = ufoGreen;
                     glowRenderer.sprite = ufoGreen;
                 }
-                SetGlowColor(greenGlowColor); // Uses Inspector value
+                SetGlowColor(greenGlowColor);
                 break;
 
             case NeonColorType.Yellow:
@@ -128,11 +141,10 @@ public class NeonGlowController : MonoBehaviour
                     fillRenderer.sprite = ufoYellow;
                     glowRenderer.sprite = ufoYellow;
                 }
-                SetGlowColor(yellowGlowColor); // Uses Inspector value
+                SetGlowColor(yellowGlowColor);
                 break;
         }
 
-        // Fill sprite stays untinted
         fillRenderer.color = Color.white;
     }
 

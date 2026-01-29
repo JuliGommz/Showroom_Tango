@@ -2,28 +2,37 @@
 ====================================================================
 * MenuManager - Main Menu Controller
 ====================================================================
-* Project: Showroom_Tango (2-Player Top-Down Bullet-Hell)
-* Course: PRG - Game & Multimedia Design
+* Project: Showroom_Tango
+* Course: Game & Multimedia Design
 * Developer: Julian
 * Date: 2025-01-23
-* Version: 1.2 - Fixed PreferencesMenu integration (CanvasGroup visibility)
-*
-* WICHTIG: KOMMENTIERUNG NICHT LOESCHEN!
-*
+* Version: 1.2
+* 
+* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
 * AUTHORSHIP CLASSIFICATION:
-*
+* 
 * [HUMAN-AUTHORED]
 * - Menu layout (Story popup, Preferences)
-* - Scene flow update (Lobby integration)
-*
+* - Scene flow (Menu -> Game)
+* 
 * [AI-ASSISTED]
 * - Scene loading logic
 * - Popup management
-*
+* 
+* [AI-GENERATED]
+* - Complete implementation structure
+* 
+* DEPENDENCIES:
+* - UnityEngine.SceneManagement
+* - PreferencesMenu (settings popup)
+* 
 * NOTES:
-* - Start Game button loads Lobby scene (player setup)
-* - Lobby scene handles network connection and player customization
-* - Game scene loads after both players ready
+* - Start Game button loads Game scene directly
+* - Game scene contains both Lobby and Gameplay
+* - Single-scene architecture
 ====================================================================
 */
 
@@ -36,49 +45,32 @@ public class MenuManager : MonoBehaviour
     public GameObject storyPopup;
     [SerializeField] private PreferencesMenu preferencesMenu;
 
-    /// <summary>
-    /// Start Game - Load Game scene (single-scene: Lobby + Game merged)
-    /// </summary>
     public void StartGame()
     {
-        Debug.Log("[MenuManager] Loading Game scene...");
         SceneManager.LoadScene("Game", LoadSceneMode.Single);
     }
 
-
-    /// <summary>
-    /// Show story/lore popup
-    /// </summary>
     public void ShowStoryPopup()
     {
         if (storyPopup != null)
         {
             storyPopup.SetActive(true);
-            Debug.Log("[MenuManager] Story popup opened");
         }
     }
 
-    /// <summary>
-    /// Show preferences/settings popup
-    /// </summary>
     public void ShowPreferencesPopup()
     {
         if (preferencesMenu != null)
         {
             preferencesMenu.ShowMenu();
-            Debug.Log("[MenuManager] Preferences popup opened");
         }
     }
 
-    /// <summary>
-    /// Close any popup
-    /// </summary>
     public void ClosePopup(GameObject popup)
     {
         if (popup != null)
         {
             popup.SetActive(false);
-            Debug.Log($"[MenuManager] Closed popup: {popup.name}");
         }
     }
 }

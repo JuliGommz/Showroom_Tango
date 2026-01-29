@@ -1,13 +1,45 @@
+/*
+====================================================================
+* StoryPopup - Lore Display Popup Controller
+====================================================================
+* Project: Showroom_Tango
+* Course: PRG - Game & Multimedia Design
+* Developer: Julian
+* Date: 2026-01-28
+* Version: 1.0
+* 
+* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
+* 
+* [HUMAN-AUTHORED]
+* - Story popup concept for lore display
+* - Time.timeScale pause behavior
+* - CanvasGroup visibility approach
+* 
+* [AI-ASSISTED]
+* - CanvasGroup implementation pattern
+* - Component initialization structure
+* 
+* [AI-GENERATED]
+* - Complete UI visibility implementation
+* 
+* DEPENDENCIES:
+* - TMPro (TextMeshPro)
+* - UnityEngine.UI (CanvasGroup)
+* 
+* NOTES:
+* - Uses CanvasGroup for smooth show/hide without GameObject deactivation
+* - Pauses game with Time.timeScale during display
+* - Story content editable in Inspector via TextArea
+====================================================================
+*/
+
 using UnityEngine;
 using TMPro;
 
-/// <summary>
-/// Story Popup Manager for Showroom Tango
-/// Displays lore text when triggered by menu button
-/// Author: Julian Gomez
-/// Course: PRG - SRH Hochschule Heidelberg
-/// Date: January 28, 2026
-/// </summary>
 public class StoryPopup : MonoBehaviour
 {
     [Header("References")]
@@ -25,51 +57,37 @@ public class StoryPopup : MonoBehaviour
 
     void Start()
     {
-        // Keep panel active but invisible using CanvasGroup
+        // CanvasGroup allows visibility control without GameObject activation
         popupPanel.SetActive(true);
 
-        // Get or add CanvasGroup component
         canvasGroup = popupPanel.GetComponent<CanvasGroup>();
         if (canvasGroup == null)
         {
             canvasGroup = popupPanel.AddComponent<CanvasGroup>();
         }
 
-        // Hide popup without deactivating GameObject
         HidePopup();
     }
 
-    /// <summary>
-    /// Call this from Story Button onClick event or MenuManager
-    /// </summary>
     public void ShowPopup()
     {
-        // Make visible and interactable
         canvasGroup.alpha = 1f;
         canvasGroup.interactable = true;
         canvasGroup.blocksRaycasts = true;
 
-        // Update text content
         storyText.text = storyLore;
 
-        // Pause game/menu
         Time.timeScale = 0f;
     }
 
-    /// <summary>
-    /// Call this from Close Button onClick event
-    /// </summary>
     public void ClosePopup()
     {
         HidePopup();
-
-        // Resume game/menu
         Time.timeScale = 1f;
     }
 
     private void HidePopup()
     {
-        // Make invisible and non-interactable
         canvasGroup.alpha = 0f;
         canvasGroup.interactable = false;
         canvasGroup.blocksRaycasts = false;

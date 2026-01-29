@@ -1,51 +1,48 @@
-﻿/*
+/*
 ====================================================================
 * PlayerController - Player Movement and Network Synchronization
 ====================================================================
-* Project: Showroom_Tango (2-Player Top-Down Bullet-Hell)
-* Course: PRG - Game & Multimedia Design
+* Project: Showroom_Tango
+* Course: Game & Multimedia Design
 * Developer: Julian
 * Date: 2025-01-20
-* Version: 1.3 - Removed manual shooting (uses WeaponManager auto-fire)
-*
-* WICHTIG: KOMMENTIERUNG NICHT LOESCHEN!
-* Diese detaillierte Authorship-Dokumentation ist fuer die akademische
+* Version: 1.3
+* 
+* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
 * Bewertung erforderlich und darf nicht entfernt werden!
-*
+* 
 * AUTHORSHIP CLASSIFICATION:
-*
+* 
 * [HUMAN-AUTHORED]
-* - Component-First architecture (Prefab created before script)
+* - Component-first architecture
 * - Owner-only input handling strategy
 * - SyncVar selection (PlayerName, CurrentHP, PlayerColor)
 * - Mouse rotation approach
-*
+* - Boundary clamping values (±30x, ±20y)
+* 
 * [AI-ASSISTED]
-* - NetworkBehaviour implementation
-* - Input System integration (Unity New Input System)
+* - Unity New Input System integration
 * - Server-authority movement pattern
-* - FishNet 4.x SyncVar<T> syntax
-* - Academic header formatting
-* - Dead code removal (manual shooting system)
-*
+* - FishNet 4.x SyncVar syntax
+* - Dead code removal (manual shooting)
+* 
 * [AI-GENERATED]
-* - None
-*
+* - NetworkBehaviour FishNet implementation
+* - Complete event subscription pattern
+* 
 * DEPENDENCIES:
-* - FishNet.Object.NetworkBehaviour (FishNet package)
-* - FishNet.Object.Synchronizing.SyncVar<T> (FishNet 4.x)
-* - UnityEngine.InputSystem (Unity Input System package)
-* - Rigidbody2D (Unity Physics2D)
-* - WeaponManager (handles shooting via auto-fire)
-*
+* - FishNet.Object (NetworkBehaviour, SyncVar)
+* - UnityEngine.InputSystem (Unity Input System)
+* - WeaponManager (auto-fire system)
+* - PlayerHealth (death state)
+* 
 * NOTES:
-* - Uses Unity New Input System (ADR-007)
-* - Server-authority for position (ADR-009)
-* - Owner-only input processing (FishNet [IsOwner])
-* - Rotation follows mouse position in world space
-* - FishNet 4.x syntax: SyncVar<Type> instead of [SyncVar] attribute
-* - Color control removed (handled by NeonGlowController)
-* - Shooting removed (handled by WeaponManager auto-fire system)
+* - Uses Unity New Input System
+* - Server-authority for position
+* - Owner-only input processing
+* - Mouse rotation in world space
+* - Shooting handled by WeaponManager
 ====================================================================
 */
 
@@ -64,23 +61,16 @@ public class PlayerController : NetworkBehaviour
     private readonly SyncVar<int> currentHP = new SyncVar<int>(100);
     private readonly SyncVar<Color> playerColor = new SyncVar<Color>(Color.white);
 
-    // Component references
     private Rigidbody2D rb;
     private Camera mainCamera;
     private PlayerHealth playerHealth;
-
-    // Input System references
     private PlayerInput playerInput;
     private InputAction moveAction;
-
-    // Movement state
     private Vector2 moveInput;
 
     public override void OnStartNetwork()
     {
         base.OnStartNetwork();
-
-        // Subscribe to SyncVar changes
         playerName.OnChange += OnPlayerNameChanged;
         currentHP.OnChange += OnHPChanged;
         playerColor.OnChange += OnColorChanged;
@@ -89,8 +79,6 @@ public class PlayerController : NetworkBehaviour
     public override void OnStopNetwork()
     {
         base.OnStopNetwork();
-
-        // Unsubscribe from SyncVar changes
         playerName.OnChange -= OnPlayerNameChanged;
         currentHP.OnChange -= OnHPChanged;
         playerColor.OnChange -= OnColorChanged;
@@ -100,10 +88,8 @@ public class PlayerController : NetworkBehaviour
     {
         base.OnStartClient();
 
-        // Only setup for owner
         if (!IsOwner)
         {
-            // Disable PlayerInput component for non-owners
             PlayerInput input = GetComponent<PlayerInput>();
             if (input != null)
             {
@@ -112,13 +98,11 @@ public class PlayerController : NetworkBehaviour
             return;
         }
 
-        // Owner-specific initialization
         InitializeInput();
     }
 
     void Awake()
     {
-        // Get component references with null checks
         rb = GetComponent<Rigidbody2D>();
         playerHealth = GetComponent<PlayerHealth>();
 
@@ -126,7 +110,6 @@ public class PlayerController : NetworkBehaviour
         {
             Debug.LogError("PlayerController: Rigidbody2D component not found!");
         }
-
         if (playerHealth == null)
         {
             Debug.LogError("PlayerController: PlayerHealth component not found!");
@@ -135,7 +118,6 @@ public class PlayerController : NetworkBehaviour
 
     void Start()
     {
-        // Get main camera
         mainCamera = Camera.main;
         if (mainCamera == null)
         {
@@ -149,7 +131,6 @@ public class PlayerController : NetworkBehaviour
         if (playerInput != null)
         {
             moveAction = playerInput.actions["Movement"];
-
             if (moveAction == null)
             {
                 Debug.LogError("PlayerController: Movement action not found in Input Actions!");
@@ -163,34 +144,28 @@ public class PlayerController : NetworkBehaviour
 
     void Update()
     {
-        // Only process input for owner
         if (!IsOwner) return;
 
-        // Read input
         if (moveAction != null)
         {
             moveInput = moveAction.ReadValue<Vector2>();
         }
 
-        // Handle rotation toward mouse
         RotateTowardsMouse();
     }
 
     void FixedUpdate()
     {
-        // Only process movement for owner
         if (!IsOwner) return;
 
-        // Apply movement
         if (rb != null)
         {
             Vector2 movement = moveInput * moveSpeed;
             rb.linearVelocity = movement;
 
-            // Clamp position to boundaries
             Vector3 pos = transform.position;
-            pos.x = Mathf.Clamp(pos.x, -30f, 30f);  // Doubled from 15 to 30
-            pos.y = Mathf.Clamp(pos.y, -20f, 20f);  // Doubled from 10 to 20
+            pos.x = Mathf.Clamp(pos.x, -30f, 30f);
+            pos.y = Mathf.Clamp(pos.y, -20f, 20f);
             transform.position = pos;
         }
     }
@@ -199,34 +174,21 @@ public class PlayerController : NetworkBehaviour
     {
         if (mainCamera == null) return;
 
-        // Get mouse position in world space
         Vector3 mouseWorldPos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
         mouseWorldPos.z = 0f;
 
-        // Calculate direction
         Vector2 direction = (mouseWorldPos - transform.position).normalized;
-
-        // Calculate angle
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
 
-        // Apply rotation (subtract 90 because sprite faces up by default)
+        // Subtract 90 because sprite faces up by default
         transform.rotation = Quaternion.Euler(0f, 0f, angle - 90f);
     }
 
-    // SyncVar change callbacks
-    private void OnPlayerNameChanged(string prev, string next, bool asServer)
-    {
-        Debug.Log($"Player name changed: {prev} -> {next}");
-    }
-
-    private void OnHPChanged(int prev, int next, bool asServer)
-    {
-        Debug.Log($"Player HP changed: {prev} -> {next}");
-    }
+    private void OnPlayerNameChanged(string prev, string next, bool asServer) { }
+    private void OnHPChanged(int prev, int next, bool asServer) { }
 
     private void OnColorChanged(Color prev, Color next, bool asServer)
     {
-        // Apply tint to sprite renderers
         ApplyColorTint(next);
     }
 
@@ -239,18 +201,12 @@ public class PlayerController : NetworkBehaviour
         }
     }
 
-    /// <summary>
-    /// Called by PlayerSpawner on server to apply Lobby name
-    /// </summary>
     [Server]
     public void ApplyName(string name)
     {
         playerName.Value = name;
     }
 
-    /// <summary>
-    /// Called by PlayerSpawner on server to apply Lobby color choice
-    /// </summary>
     [Server]
     public void ApplyColor(Color color)
     {
@@ -273,7 +229,6 @@ public class PlayerController : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     public void TakeDamageServerRpc(int damage)
     {
-        // Forward directly to PlayerHealth (no duplicate HP tracking)
         if (playerHealth != null)
         {
             playerHealth.ApplyDamage(damage);
@@ -283,14 +238,12 @@ public class PlayerController : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     public void RequestGameRestartServerRpc()
     {
-        // Forward restart request to GameStateManager
         if (GameStateManager.Instance != null)
         {
             GameStateManager.Instance.RequestRestartServerRpc();
         }
     }
 
-    // Public getters for other systems
     public string GetPlayerName() => playerName.Value;
     public int GetCurrentHP() => currentHP.Value;
     public Color GetPlayerColor() => playerColor.Value;

@@ -1,41 +1,43 @@
-﻿/*
+/*
 ====================================================================
 * LobbyUI - Main Lobby Screen Controller
 ====================================================================
-* Project: Showroom_Tango (2-Player Top-Down Bullet-Hell)
-* Course: PRG - Game & Multimedia Design
+* Project: Showroom_Tango
+* Course: Game & Multimedia Design
 * Developer: Julian
 * Date: 2025-01-23
-* Version: 1.0 - Initial lobby UI implementation
-*
-* WICHTIG: KOMMENTIERUNG NICHT LOESCHEN!
-*
+* Version: 1.0
+* 
+* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
 * AUTHORSHIP CLASSIFICATION:
-*
+* 
 * [HUMAN-AUTHORED]
 * - Lobby layout (2 player panels + center status)
-* - Countdown display ("Starting in 3... 2... 1...")
+* - Countdown display style
 * - Rankings button placement
-* - Waiting message
-*
+* - Waiting message format
+* 
 * [AI-ASSISTED]
 * - LobbyManager event subscription
 * - Countdown visual updates
 * - Player panel synchronization
-* - FishNet local player detection
-*
+* - Retry connection pattern
+* 
 * [AI-GENERATED]
 * - Complete UI orchestration logic
-*
+* 
 * DEPENDENCIES:
 * - TMPro (TextMeshPro)
 * - LobbyManager (network lobby state)
 * - PlayerSetupUI (individual player panels)
-* - FishNet.Managing.NetworkManager
-*
+* - FishNet.Managing (NetworkManager)
+* 
 * NOTES:
 * - Updates in real-time based on LobbyManager events
-* - Countdown uses same style as WaveTransitionUI
+* - Countdown uses consistent visual style
 * - Rankings button placeholder for future PHP integration
 ====================================================================
 */
@@ -56,7 +58,7 @@ public class LobbyUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI statusText;
     [SerializeField] private GameObject countdownPanel;
     [SerializeField] private TextMeshProUGUI countdownText;
-    [SerializeField] private Color countdownColor = new Color(0.667f, 0f, 0.784f, 1f); // Magenta
+    [SerializeField] private Color countdownColor = new Color(0.667f, 0f, 0.784f, 1f);
 
     [Header("Rankings")]
     [SerializeField] private Button rankingsButton;
@@ -66,9 +68,6 @@ public class LobbyUI : MonoBehaviour
 
     void Start()
     {
-        Debug.Log("[LobbyUI] Initializing lobby UI...");
-
-        // Get NetworkManager
         networkManager = FindAnyObjectByType<NetworkManager>();
         if (networkManager == null)
         {
@@ -76,19 +75,16 @@ public class LobbyUI : MonoBehaviour
             return;
         }
 
-        // Setup countdown visuals
         if (countdownText != null)
         {
             countdownText.color = countdownColor;
         }
 
-        // Hide countdown initially
         if (countdownPanel != null)
         {
             countdownPanel.SetActive(false);
         }
 
-        // Setup rankings button
         if (rankingsButton != null)
         {
             rankingsButton.onClick.AddListener(OnRankingsButtonClicked);
@@ -99,7 +95,6 @@ public class LobbyUI : MonoBehaviour
             rankingsPlaceholderPanel.SetActive(false);
         }
 
-        // Subscribe to LobbyManager events
         if (LobbyManager.Instance != null)
         {
             LobbyManager.Instance.OnLobbyStateChanged += UpdateLobbyDisplay;
@@ -111,15 +106,11 @@ public class LobbyUI : MonoBehaviour
             Invoke(nameof(RetryLobbyManagerConnection), 1f);
         }
 
-        // Initial update
         UpdateLobbyDisplay();
-
-        Debug.Log("[LobbyUI] Initialization complete");
     }
 
     void OnDestroy()
     {
-        // Unsubscribe from events
         if (LobbyManager.Instance != null)
         {
             LobbyManager.Instance.OnLobbyStateChanged -= UpdateLobbyDisplay;
@@ -139,7 +130,6 @@ public class LobbyUI : MonoBehaviour
             LobbyManager.Instance.OnLobbyStateChanged += UpdateLobbyDisplay;
             LobbyManager.Instance.OnCountdownTick += UpdateCountdownDisplay;
             UpdateLobbyDisplay();
-            Debug.Log("[LobbyUI] Successfully connected to LobbyManager");
         }
         else
         {
@@ -154,9 +144,6 @@ public class LobbyUI : MonoBehaviour
         int playerCount = LobbyManager.Instance.GetPlayerCount();
         bool countdownActive = LobbyManager.Instance.IsCountdownActive();
 
-        Debug.Log($"[LobbyUI] Updating display - Players: {playerCount}, Countdown: {countdownActive}");
-
-        // Update status text
         if (statusText != null)
         {
             if (countdownActive)
@@ -173,14 +160,12 @@ public class LobbyUI : MonoBehaviour
             }
         }
 
-        // Show/hide countdown panel
         if (countdownPanel != null && statusPanel != null)
         {
             countdownPanel.SetActive(countdownActive);
             statusPanel.SetActive(!countdownActive);
         }
 
-        // Update player panels from server data
         UpdatePlayerPanels();
     }
 
@@ -189,12 +174,10 @@ public class LobbyUI : MonoBehaviour
         if (LobbyManager.Instance == null) return;
 
         var playerData = LobbyManager.Instance.GetPlayerData();
-
         foreach (var kvp in playerData)
         {
             PlayerLobbyData data = kvp.Value;
 
-            // Update correct panel based on player index
             if (data.playerIndex == 0 && player1SetupUI != null)
             {
                 player1SetupUI.UpdateFromServerData(data);
@@ -212,36 +195,23 @@ public class LobbyUI : MonoBehaviour
         {
             if (secondsRemaining > 0)
             {
-                countdownText.text = secondsRemaining.ToString();  // ← Just the number
-                Debug.Log($"[LobbyUI] Countdown: {secondsRemaining}");
+                countdownText.text = secondsRemaining.ToString();
             }
             else
             {
-                countdownText.text = "";  // ← Hide at 0 (or keep "GO!" if you like it)
-                Debug.Log("[LobbyUI] Countdown: Complete");
+                countdownText.text = "";
             }
         }
     }
 
-
-
     private void OnRankingsButtonClicked()
     {
-        Debug.Log("[LobbyUI] Rankings button clicked");
-
-        // Show placeholder panel
         if (rankingsPlaceholderPanel != null)
         {
             rankingsPlaceholderPanel.SetActive(true);
         }
-
-        // TODO: Future PHP database integration for rankings
-        // Will fetch leaderboard data from server
     }
 
-    /// <summary>
-    /// Close rankings placeholder (called by close button)
-    /// </summary>
     public void CloseRankingsPlaceholder()
     {
         if (rankingsPlaceholderPanel != null)

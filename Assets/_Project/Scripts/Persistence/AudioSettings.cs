@@ -1,9 +1,45 @@
+/*
+====================================================================
+* AudioSettings - Audio Settings Persistence System
+====================================================================
+* Project: Showroom_Tango
+* Course: Game & Multimedia Design
+* Developer: Julian
+* Date: 2026-01-28
+* Version: 1.0
+* 
+* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
+* 
+* [HUMAN-AUTHORED]
+* - Three-tier volume system (Master, Music, SFX)
+* - Default volume (0.7)
+* - PlayerPrefs persistence
+* 
+* [AI-ASSISTED]
+* - Static class pattern
+* - Caching strategy for performance
+* - Final volume calculation (Master * Category)
+* 
+* [AI-GENERATED]
+* - Property implementation with caching
+* - GameAudioManager integration
+* 
+* DEPENDENCIES:
+* - GameAudioManager (volume application)
+* 
+* NOTES:
+* - Static class for global access
+* - Lazy-loaded caching prevents redundant PlayerPrefs reads
+* - Master volume multiplied with category volumes for final output
+====================================================================
+*/
+
 using UnityEngine;
 
-/// <summary>
-/// Centralized audio settings persistence and management
-/// Author: Julian Gomez | SRH Hochschule Heidelberg | January 28, 2026
-/// </summary>
 public static class AudioSettings
 {
     private const string MASTER_VOLUME_KEY = "MasterVolume";

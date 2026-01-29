@@ -1,25 +1,44 @@
-﻿/*
+/*
 ====================================================================
-* EnemyChaser.cs - Follow Player AI
+* EnemyChaser - Melee Enemy AI
 ====================================================================
 * Project: Showroom_Tango
-* Course: PRG - Game & Multimedia Design SRH Hochschule
-* Developer: Julian Gomez
+* Course: Game & Multimedia Design
+* Developer: Julian
 * Date: 2025-01-14
 * Version: 1.0
 * 
 * ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
 * 
 * [HUMAN-AUTHORED]
-* - Simple follow behavior (Vector2.MoveTowards)
-* - Speed value (3 units/second)
-* - Collision damage concept (20 HP)
+* - Simple follow behavior concept
+* - Movement speed (3 units/second)
+* - Collision damage (20 HP)
+* - Kamikaze behavior (dies on collision)
 * 
 * [AI-ASSISTED]
-* - NetworkBehaviour implementation
-* - Server-authority movement
-* - Nearest player detection
-* - Collision damage system
+* - Speed randomization (±30%) to prevent horde synchronization
+* - Random offset system (0.5-1.5 units) to prevent stacking
+* - Target update optimization (0.5s intervals)
+* 
+* [AI-GENERATED]
+* - NetworkBehaviour FishNet implementation
+* - Server-authority movement pattern
+* - Collision damage integration with PlayerController
+* 
+* DEPENDENCIES:
+* - FishNet.Object (NetworkBehaviour)
+* - PlayerController (damage application)
+* - EnemyHealth (self-destruction)
+* - PlayerHealth (target validation)
+* 
+* NOTES:
+* - Dies immediately on player collision (kamikaze enemy)
+* - Speed/offset randomization prevents synchronized movement
 ====================================================================
 */
 
@@ -30,7 +49,7 @@ public class EnemyChaser : NetworkBehaviour
 {
     [Header("Movement Settings")]
     [SerializeField] private float moveSpeed = 3f;
-    [SerializeField] private float speedVariation = 0.3f; // ±30% speed randomization
+    [SerializeField] private float speedVariation = 0.3f;
 
     [Header("Damage Settings")]
     [SerializeField] private int collisionDamage = 20;
@@ -39,21 +58,17 @@ public class EnemyChaser : NetworkBehaviour
     private Transform targetPlayer;
     private Rigidbody2D rb;
     private float targetUpdateTimer = 0f;
-    private const float TARGET_UPDATE_INTERVAL = 0.5f; // Re-evaluate target every 0.5 seconds
-
-    // Movement variety to prevent hordes
-    private float actualMoveSpeed; // Randomized speed per enemy
-    private Vector2 randomOffset; // Small random offset to spread enemies
-
-    // Spawn protection
+    private float actualMoveSpeed;
+    private Vector2 randomOffset;
     private bool isInitialized = false;
     private float spawnTime;
+
+    private const float TARGET_UPDATE_INTERVAL = 0.5f;
     private const float SPAWN_PROTECTION_DURATION = 0.5f;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-
         if (rb == null)
         {
             Debug.LogError("[EnemyChaser] Rigidbody2D missing!");
@@ -66,23 +81,21 @@ public class EnemyChaser : NetworkBehaviour
         spawnTime = Time.time;
         isInitialized = false;
 
-        // Randomize movement for variety (prevents hordes)
+        // Randomize speed to prevent synchronized horde movement
         actualMoveSpeed = moveSpeed * Random.Range(1f - speedVariation, 1f + speedVariation);
 
-        // Random offset so enemies don't all converge on exact same point
+        // Random offset prevents perfect convergence on player
         float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
         float offsetDist = Random.Range(0.5f, 1.5f);
         randomOffset = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * offsetDist;
 
         FindNearestPlayer();
-        Debug.Log($"[EnemyChaser] Spawned with speed {actualMoveSpeed:F2}, offset {randomOffset}");
     }
 
     void FixedUpdate()
     {
-        if (!IsServerStarted) return;  // ✅ Use lifecycle property
+        if (!IsServerStarted) return;
 
-        // Enable AI after spawn protection
         if (!isInitialized)
         {
             if (Time.time >= spawnTime + SPAWN_PROTECTION_DURATION)
@@ -91,11 +104,10 @@ public class EnemyChaser : NetworkBehaviour
             }
             else
             {
-                return; // Skip AI logic during spawn protection
+                return;
             }
         }
 
-        // Performance optimization: Re-evaluate target periodically instead of every frame
         targetUpdateTimer += Time.fixedDeltaTime;
         if (targetUpdateTimer >= TARGET_UPDATE_INTERVAL)
         {
@@ -103,13 +115,12 @@ public class EnemyChaser : NetworkBehaviour
             FindNearestPlayer();
         }
 
-        // Also check if current target is dead
         if (targetPlayer != null)
         {
             PlayerHealth health = targetPlayer.GetComponent<PlayerHealth>();
             if (health != null && health.IsDead())
             {
-                targetPlayer = null; // Force re-targeting
+                targetPlayer = null;
                 FindNearestPlayer();
             }
         }
@@ -126,7 +137,6 @@ public class EnemyChaser : NetworkBehaviour
     private void FindNearestPlayer()
     {
         GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
-
         if (players.Length == 0)
         {
             Debug.LogWarning("[EnemyChaser] No players found!");
@@ -138,7 +148,6 @@ public class EnemyChaser : NetworkBehaviour
 
         foreach (GameObject player in players)
         {
-            // Skip dead players
             PlayerHealth health = player.GetComponent<PlayerHealth>();
             if (health != null && health.IsDead()) continue;
 
@@ -157,38 +166,31 @@ public class EnemyChaser : NetworkBehaviour
     {
         if (targetPlayer == null) return;
 
-        // Move directly toward player + small random offset (prevents perfect stacking)
         Vector2 targetPosition = (Vector2)targetPlayer.position + randomOffset;
         Vector2 direction = (targetPosition - rb.position).normalized;
-
-        // Move using randomized speed (creates natural spread)
         Vector2 newPosition = rb.position + direction * actualMoveSpeed * Time.fixedDeltaTime;
-
         rb.MovePosition(newPosition);
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
         if (!IsServerStarted) return;
-        if (!isInitialized) return; // Ignore collisions during spawn protection
+        if (!isInitialized) return;
 
         if (collision.gameObject.CompareTag("Player"))
         {
-            Debug.Log($"[EnemyChaser] Hit player! Damage: {collisionDamage}");
-
             PlayerController player = collision.gameObject.GetComponent<PlayerController>();
             if (player != null)
             {
                 player.TakeDamageServerRpc(collisionDamage);
             }
 
-            // Kamikaze behavior - die on collision (no individual score, but team score awarded)
             if (diesOnCollision)
             {
                 EnemyHealth health = GetComponent<EnemyHealth>();
                 if (health != null)
                 {
-                    health.TakeDamage(int.MaxValue, attackerPlayer: null); // Suicide - team score only
+                    health.TakeDamage(int.MaxValue, attackerPlayer: null);
                 }
             }
         }

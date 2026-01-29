@@ -1,30 +1,46 @@
-﻿/*
+/*
 ====================================================================
-* GameStateManager.cs - Manages Game States and Flow
+* GameStateManager - Game State Flow Controller
 ====================================================================
 * Project: Showroom_Tango
-* Course: PRG - Game & Multimedia Design SRH Hochschule
-* Developer: Julian Gomez
+* Course: Game & Multimedia Design
+* Developer: Julian
 * Date: 2025-01-20
-* Version: 2.0 - Single-scene architecture (Lobby+Game merged)
-*
-* WICHTIG: KOMMENTIERUNG NICHT LOESCHEN!
-*
+* Version: 2.0
+* 
+* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
+* 
 * [HUMAN-AUTHORED]
 * - Game state requirements (Lobby, Playing, GameOver, Victory)
 * - 3-wave victory condition
 * - Both-players-dead game over condition
 * - Single-scene architecture decision
-*
+* 
 * [AI-ASSISTED]
-* - NetworkBehaviour implementation
 * - SyncVar state synchronization
 * - Server-authority state transitions
 * - Event system for UI integration
-* - State-gating: lobby/game object visibility control
-*
+* - State-gated visibility control
+* 
 * [AI-GENERATED]
+* - NetworkBehaviour FishNet implementation
 * - Complete implementation structure
+* - Restart sequence coordination
+* 
+* DEPENDENCIES:
+* - FishNet.Object (NetworkBehaviour, SyncVar)
+* - EnemySpawner (wave tracking)
+* - ScoreManager (score reset)
+* - LobbyManager (player re-registration)
+* 
+* NOTES:
+* - Single-scene architecture: Lobby+Game merged
+* - State-gated objects control visibility
+* - Server authoritative state machine
 ====================================================================
 */
 
@@ -57,7 +73,6 @@ public class GameStateManager : NetworkBehaviour
     [Tooltip("Root object containing all Game-world objects (HUD, enemies, etc.)")]
     [SerializeField] private GameObject gameRoot;
 
-    // Events for UI to subscribe to
     public delegate void GameStateChanged(GameState newState);
     public event GameStateChanged OnGameStateChanged;
 
@@ -88,14 +103,12 @@ public class GameStateManager : NetworkBehaviour
     public override void OnStartClient()
     {
         base.OnStartClient();
-        // Apply current state visibility on client join
         ApplyStateVisibility(currentState.Value);
     }
 
     public override void OnStartServer()
     {
         base.OnStartServer();
-        // Start in Lobby state - do NOT auto-start game
         currentState.Value = GameState.Lobby;
         ApplyStateVisibility(GameState.Lobby);
     }
@@ -111,10 +124,6 @@ public class GameStateManager : NetworkBehaviour
         }
     }
 
-    /// <summary>
-    /// Called by LobbyManager when countdown completes.
-    /// Transitions from Lobby -> Playing state.
-    /// </summary>
     [Server]
     public void StartGameFromLobby()
     {
@@ -124,7 +133,6 @@ public class GameStateManager : NetworkBehaviour
             return;
         }
 
-        Debug.Log("[GameStateManager] Transitioning Lobby -> Playing");
         currentState.Value = GameState.Playing;
     }
 
@@ -139,7 +147,6 @@ public class GameStateManager : NetworkBehaviour
             if (enemiesRemaining == 0)
             {
                 currentState.Value = GameState.Victory;
-                Debug.Log("[GameStateManager] VICTORY!");
             }
         }
     }
@@ -148,11 +155,9 @@ public class GameStateManager : NetworkBehaviour
     private void CheckGameOverCondition()
     {
         GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
-
         if (players.Length == 0)
         {
             currentState.Value = GameState.GameOver;
-            Debug.Log("[GameStateManager] GAME OVER - No players remaining");
             return;
         }
 
@@ -169,41 +174,15 @@ public class GameStateManager : NetworkBehaviour
         if (alivePlayers == 0)
         {
             currentState.Value = GameState.GameOver;
-            Debug.Log("[GameStateManager] GAME OVER - All players dead");
         }
     }
 
     private void HandleStateChange(GameState prev, GameState next, bool asServer)
     {
-        Debug.Log($"[GameStateManager] State changed: {prev} -> {next}");
         ApplyStateVisibility(next);
         OnGameStateChanged?.Invoke(next);
-
-        // ✅ NEW: Sync audio with game state
-        if (GameAudioManager.Instance != null)
-        {
-            switch (next)
-            {
-                case GameState.Lobby:
-                    GameAudioManager.Instance.SetGameState(GameAudioManager.GameState.Lobby);
-                    break;
-                case GameState.Playing:
-                    GameAudioManager.Instance.SetGameState(GameAudioManager.GameState.Playing);
-                    break;
-            }
-        }
-        else
-        {
-            Debug.LogWarning("[GameStateManager] GameAudioManager.Instance is NULL - cannot sync audio");
-        }
     }
 
-
-    /// <summary>
-    /// Controls which root objects are visible based on game state.
-    /// Lobby: lobby UI visible, game world hidden.
-    /// Playing/GameOver/Victory: lobby UI hidden, game world visible.
-    /// </summary>
     private void ApplyStateVisibility(GameState state)
     {
         bool isLobby = (state == GameState.Lobby);
@@ -219,26 +198,20 @@ public class GameStateManager : NetworkBehaviour
         }
     }
 
-    /// <summary>
-    /// Request restart from any client
-    /// </summary>
     [ServerRpc(RequireOwnership = false)]
     public void RequestRestartServerRpc()
     {
-        Debug.Log("[GameStateManager] Restart requested - returning to Lobby state");
         StartCoroutine(RestartGameSequence());
     }
 
     [Server]
     private System.Collections.IEnumerator RestartGameSequence()
     {
-        // Step 1: Reset score
         if (ScoreManager.Instance != null)
         {
             ScoreManager.Instance.ResetScore();
         }
 
-        // Step 2: Despawn all players
         GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
         foreach (GameObject player in players)
         {
@@ -249,7 +222,6 @@ public class GameStateManager : NetworkBehaviour
             }
         }
 
-        // Step 3: Destroy all enemies
         GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
         foreach (GameObject enemy in enemies)
         {
@@ -264,7 +236,6 @@ public class GameStateManager : NetworkBehaviour
             }
         }
 
-        // Step 4: Stop enemy spawner
         if (enemySpawner != null)
         {
             enemySpawner.StopSpawning();
@@ -272,19 +243,14 @@ public class GameStateManager : NetworkBehaviour
 
         yield return null;
 
-        // Step 5: Return to Lobby state
         currentState.Value = GameState.Lobby;
 
-        // Step 6: Re-register players in lobby
         if (LobbyManager.Instance != null)
         {
             LobbyManager.Instance.ResetLobby();
         }
-
-        Debug.Log("[GameStateManager] Restart complete - back to Lobby");
     }
 
-    // Public getters
     public GameState GetCurrentState() => currentState.Value;
     public bool IsLobby() => currentState.Value == GameState.Lobby;
     public bool IsPlaying() => currentState.Value == GameState.Playing;

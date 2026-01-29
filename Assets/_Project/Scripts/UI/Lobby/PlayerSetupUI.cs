@@ -1,3 +1,47 @@
+/*
+====================================================================
+* PlayerSetupUI - Ownership-Based Lobby Panel Controller
+====================================================================
+* Project: Showroom_Tango
+* Course: Game & Multimedia Design
+* Developer: Julian
+* Date: 2025-01-23
+* Version: 1.1
+* 
+* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
+* 
+* [HUMAN-AUTHORED]
+* - Two-panel lobby design (Player 1 left, Player 2 right)
+* - Name input (8 char limit)
+* - Color selection (6 presets)
+* - Ready button requirement
+* 
+* [AI-ASSISTED]
+* - Ownership determination (disable other player's panel)
+* - NetworkConnection-based ServerRpc calls
+* - Event-driven countdown display
+* - Coroutine for network initialization
+* - UpdateFromServerData method (added 2026-01-29)
+* 
+* [AI-GENERATED]
+* - Complete UI synchronization logic
+* 
+* DEPENDENCIES:
+* - LobbyManager (ServerRpc calls)
+* - FishNet NetworkManager
+* - TextMeshPro
+* 
+* NOTES:
+* - Each client sees BOTH panels but can only interact with THEIR panel
+* - Ownership determined by playerIndex vs connection registry
+* - Ready state disables name/color inputs
+====================================================================
+*/
+
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -7,7 +51,7 @@ using FishNet.Connection;
 public class PlayerSetupUI : MonoBehaviour
 {
     [Header("Player Identity")]
-    [SerializeField] private int playerIndex = 0; // 0 = Player 1, 1 = Player 2
+    [SerializeField] private int playerIndex = 0;
     [SerializeField] private TextMeshProUGUI tangoLabel;
 
     [Header("Name Input")]
@@ -29,16 +73,16 @@ public class PlayerSetupUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI countdownText;
 
     [Header("Ownership Control")]
-    [SerializeField] private GameObject interactableElements; // Parent containing buttons/input
+    [SerializeField] private GameObject interactableElements;
 
     private readonly Color[] colorPresets = new Color[]
     {
-        new Color(0.667f, 0f, 0.784f, 1f),  // Magenta
-        new Color(0f, 1f, 1f, 1f),          // Cyan
-        new Color(1f, 1f, 0f, 1f),          // Yellow
-        new Color(0f, 1f, 0f, 1f),          // Green
-        new Color(1f, 0f, 0f, 1f),          // Red
-        new Color(0f, 0.5f, 1f, 1f)         // Blue
+        new Color(0.667f, 0f, 0.784f, 1f), // Magenta
+        new Color(0f, 1f, 1f, 1f),         // Cyan
+        new Color(1f, 1f, 0f, 1f),         // Yellow
+        new Color(0f, 1f, 0f, 1f),         // Green
+        new Color(1f, 0f, 0f, 1f),         // Red
+        new Color(0f, 0.5f, 1f, 1f)        // Blue
     };
 
     private Color selectedColor;
@@ -68,32 +112,26 @@ public class PlayerSetupUI : MonoBehaviour
         if (selectedColorIndicator != null)
             selectedColorIndicator.color = selectedColor;
 
-        // Hide countdown panel initially
         if (countdownPanel != null)
             countdownPanel.SetActive(false);
 
-        // Disable interaction until ownership determined
         SetInteractable(false);
 
-        // EVENT-DRIVEN: Subscribe to LobbyManager ready event
+        // Event-driven initialization
         if (LobbyManager.Instance != null)
         {
-            // Already initialized
             InitializeWithLobbyManager();
         }
         else
         {
-            // Wait for initialization via event
             LobbyManager.OnInstanceReady += InitializeWithLobbyManager;
         }
     }
 
     void OnDestroy()
     {
-        // Cleanup: Unsubscribe from events to prevent memory leaks
         LobbyManager.OnInstanceReady -= InitializeWithLobbyManager;
 
-        // NULL SAFETY: Check if LobbyManager still exists
         if (LobbyManager.Instance != null)
         {
             LobbyManager.Instance.OnCountdownTick -= UpdateCountdownDisplay;
@@ -103,12 +141,8 @@ public class PlayerSetupUI : MonoBehaviour
 
     private void InitializeWithLobbyManager()
     {
-        // Unsubscribe after first call (event fires once)
         LobbyManager.OnInstanceReady -= InitializeWithLobbyManager;
 
-        Debug.Log($"[PlayerSetupUI] Panel {playerIndex} - LobbyManager ready, starting network initialization");
-
-        // Subscribe to countdown events
         if (LobbyManager.Instance != null)
         {
             LobbyManager.Instance.OnCountdownTick += UpdateCountdownDisplay;
@@ -120,7 +154,7 @@ public class PlayerSetupUI : MonoBehaviour
 
     private System.Collections.IEnumerator WaitForNetwork()
     {
-        networkManager = FindObjectOfType<NetworkManager>();
+        networkManager = FindAnyObjectByType<NetworkManager>();
         if (networkManager == null)
         {
             Debug.LogError("[PlayerSetupUI] NetworkManager not found!");
@@ -156,14 +190,11 @@ public class PlayerSetupUI : MonoBehaviour
         }
 
         lobbyManager = LobbyManager.Instance;
-
-        // Wait for player registration
         yield return new WaitForSeconds(0.5f);
 
-        // Determine ownership
         DetermineOwnership();
 
-        // Send initial name and color only if this is MY panel
+        // Send initial data only if this is MY panel
         if (isMyPanel && lobbyManager != null)
         {
             if (nameInputField != null)
@@ -171,7 +202,6 @@ public class PlayerSetupUI : MonoBehaviour
                 lobbyManager.UpdatePlayerNameServerRpc(nameInputField.text);
             }
             lobbyManager.UpdatePlayerColorServerRpc(selectedColor);
-            Debug.Log($"[PlayerSetupUI] Player {playerIndex + 1} - Initial name/color sent (MY PANEL)");
         }
     }
 
@@ -179,178 +209,97 @@ public class PlayerSetupUI : MonoBehaviour
     {
         if (networkManager == null || networkManager.ClientManager == null)
         {
-            Debug.LogError("[PlayerSetupUI] Cannot determine ownership - NetworkManager not ready");
+            Debug.LogWarning("[PlayerSetupUI] Cannot determine ownership - NetworkManager not ready");
             return;
         }
 
-        NetworkConnection localConn = networkManager.ClientManager.Connection;
-        if (localConn == null)
-        {
-            Debug.LogError("[PlayerSetupUI] Local connection is null");
-            return;
-        }
-
-        myConnectionId = localConn.ClientId;
-
-        // Get player count to determine which panel belongs to me
-        int playerCount = lobbyManager.GetPlayerCount();
-
-        // First player gets index 0, second player gets index 1
-        // My connection determines which panel I own
+        myConnectionId = networkManager.ClientManager.Connection.ClientId;
         var playerData = lobbyManager.GetPlayerData();
+
+        isMyPanel = false;
         foreach (var kvp in playerData)
         {
-            if (kvp.Key == myConnectionId)
+            if (kvp.Value.playerIndex == playerIndex && kvp.Key == myConnectionId)
             {
-                // This connection's playerIndex matches my panel
-                isMyPanel = (kvp.Value.playerIndex == playerIndex);
-                Debug.Log($"[PlayerSetupUI] Panel {playerIndex} - ConnectionID: {myConnectionId}, IsMyPanel: {isMyPanel}");
+                isMyPanel = true;
                 break;
             }
         }
 
-        // Enable interaction ONLY if this is my panel
         SetInteractable(isMyPanel);
     }
 
     private void SetInteractable(bool interactable)
     {
-        // Disable ALL input elements if not my panel
-        if (nameInputField != null)
-            nameInputField.interactable = interactable;
-
-        if (colorButtons != null)
-        {
-            foreach (Button btn in colorButtons)
-            {
-                if (btn != null)
-                    btn.interactable = interactable;
-            }
-        }
-
-        if (readyButton != null)
-            readyButton.interactable = interactable;
-
-        // Optional: dim visuals for non-owned panel
         if (interactableElements != null)
         {
-            CanvasGroup cg = interactableElements.GetComponent<CanvasGroup>();
-            if (cg == null)
-                cg = interactableElements.AddComponent<CanvasGroup>();
-
-            cg.alpha = interactable ? 1f : 0.5f; // Dim non-owned panel
+            interactableElements.SetActive(interactable);
         }
-
-        Debug.Log($"[PlayerSetupUI] Panel {playerIndex} - Interactable: {interactable}");
     }
 
     private void SetupColorButtons()
     {
-        if (colorButtons == null || colorButtons.Length == 0) return;
+        if (colorButtons == null) return;
 
         for (int i = 0; i < colorButtons.Length && i < colorPresets.Length; i++)
         {
-            Image buttonImage = colorButtons[i].GetComponent<Image>();
-            if (buttonImage != null)
-                buttonImage.color = colorPresets[i];
-
             int index = i;
-            colorButtons[i].onClick.AddListener(() => SelectColor(index));
-        }
-    }
-
-    private void SelectColor(int colorIndex)
-    {
-        // OWNERSHIP CHECK: Only send if this is MY panel
-        if (!isMyPanel)
-        {
-            Debug.LogWarning($"[PlayerSetupUI] Panel {playerIndex} - Not my panel, ignoring color selection");
-            return;
-        }
-
-        if (colorIndex < 0 || colorIndex >= colorPresets.Length) return;
-
-        selectedColor = colorPresets[colorIndex];
-        if (selectedColorIndicator != null)
-            selectedColorIndicator.color = selectedColor;
-
-        if (lobbyManager != null && networkManager != null && networkManager.IsClientStarted)
-        {
-            lobbyManager.UpdatePlayerColorServerRpc(selectedColor);
-            Debug.Log($"[PlayerSetupUI] Panel {playerIndex} (MY PANEL) - Color sent: {selectedColor}");
+            if (colorButtons[i] != null)
+            {
+                Image btnImage = colorButtons[i].GetComponent<Image>();
+                if (btnImage != null)
+                {
+                    btnImage.color = colorPresets[i];
+                }
+                colorButtons[i].onClick.AddListener(() => OnColorSelected(index));
+            }
         }
     }
 
     private void OnNameChanged(string newName)
     {
-        // OWNERSHIP CHECK
-        if (!isMyPanel) return;
+        if (!isMyPanel || lobbyManager == null) return;
+        lobbyManager.UpdatePlayerNameServerRpc(newName);
+    }
 
-        if (lobbyManager != null && networkManager != null && networkManager.IsClientStarted)
+    private void OnColorSelected(int colorIndex)
+    {
+        if (!isMyPanel || lobbyManager == null) return;
+
+        selectedColor = colorPresets[colorIndex];
+        if (selectedColorIndicator != null)
         {
-            lobbyManager.UpdatePlayerNameServerRpc(newName);
+            selectedColorIndicator.color = selectedColor;
         }
+        lobbyManager.UpdatePlayerColorServerRpc(selectedColor);
     }
 
     private void OnReadyButtonClicked()
     {
-        // OWNERSHIP CHECK
-        if (!isMyPanel) return;
-
-        if (lobbyManager != null && networkManager != null && networkManager.IsClientStarted)
-        {
-            lobbyManager.ToggleReadyServerRpc();
-            Debug.Log($"[PlayerSetupUI] Panel {playerIndex} (MY PANEL) - Ready toggled");
-        }
+        if (!isMyPanel || lobbyManager == null) return;
+        lobbyManager.ToggleReadyServerRpc();
     }
 
-    // Countdown display logic
-    private void UpdateCountdownDisplay(int secondsRemaining)
-    {
-        if (countdownPanel == null) return;
-
-        countdownPanel.SetActive(secondsRemaining > 0);
-
-        if (secondsRemaining > 0 && countdownText != null)
-        {
-            countdownText.text = secondsRemaining.ToString();
-        }
-    }
-
-    // Listen to lobby state changes
     private void OnLobbyStateChanged()
     {
         if (lobbyManager == null) return;
 
-        // Hide countdown if cancelled
-        if (!lobbyManager.IsCountdownActive() && countdownPanel != null)
-        {
-            countdownPanel.SetActive(false);
-        }
-    }
+        var playerData = lobbyManager.GetPlayerData();
+        PlayerLobbyData? myData = null;
 
-    // SERVER-AUTHORITATIVE: Update from server data
-    public void UpdateFromServerData(PlayerLobbyData data)
-    {
-        // Update name
-        if (nameInputField != null)
+        foreach (var kvp in playerData)
         {
-            nameInputField.onValueChanged.RemoveListener(OnNameChanged);
-            nameInputField.text = data.playerName;
-            nameInputField.onValueChanged.AddListener(OnNameChanged);
+            if (kvp.Value.playerIndex == playerIndex)
+            {
+                myData = kvp.Value;
+                break;
+            }
         }
 
-        // Update color
-        selectedColor = data.playerColor;
-        if (selectedColorIndicator != null)
-            selectedColorIndicator.color = selectedColor;
+        if (!myData.HasValue) return;
 
-        // Update ready visuals
-        UpdateReadyVisuals(data.isReady);
-    }
+        bool isReady = myData.Value.isReady;
 
-    private void UpdateReadyVisuals(bool isReady)
-    {
         if (readyButtonText != null)
             readyButtonText.text = isReady ? "CANCEL" : "READY";
 
@@ -361,7 +310,7 @@ public class PlayerSetupUI : MonoBehaviour
             readyButton.colors = colors;
         }
 
-        // Only disable MY panel's controls when ready
+        // Disable controls when ready (only for MY panel)
         if (isMyPanel)
         {
             if (nameInputField != null)
@@ -373,6 +322,68 @@ public class PlayerSetupUI : MonoBehaviour
                 {
                     if (btn != null)
                         btn.interactable = !isReady;
+                }
+            }
+        }
+
+        // Show/hide countdown
+        bool countdownActive = lobbyManager.IsCountdownActive();
+        if (countdownPanel != null)
+        {
+            countdownPanel.SetActive(countdownActive);
+        }
+    }
+
+    private void UpdateCountdownDisplay(int secondsRemaining)
+    {
+        if (countdownText != null)
+        {
+            if (secondsRemaining > 0)
+            {
+                countdownText.text = $"STARTING IN {secondsRemaining}...";
+            }
+            else
+            {
+                countdownText.text = "GO!";
+            }
+        }
+    }
+
+    /// <summary>
+    /// Updates UI panel with server-synchronized player data
+    /// Called by LobbyUI when player data changes on server
+    /// </summary>
+    public void UpdateFromServerData(PlayerLobbyData data)
+    {
+        // Update name display (but not input field if this is my panel and I'm editing)
+        if (nameInputField != null && (!isMyPanel || !nameInputField.isFocused))
+        {
+            nameInputField.text = data.playerName;
+        }
+
+        // Update ready button appearance
+        if (readyButtonText != null)
+            readyButtonText.text = data.isReady ? "CANCEL" : "READY";
+
+        if (readyButton != null)
+        {
+            ColorBlock colors = readyButton.colors;
+            colors.normalColor = data.isReady ? readyColor : notReadyColor;
+            readyButton.colors = colors;
+        }
+
+        // Lock/unlock controls based on ready state (only for MY panel)
+        if (isMyPanel)
+        {
+            if (nameInputField != null)
+                nameInputField.interactable = !data.isReady;
+
+            if (colorButtons != null)
+            {
+                foreach (Button btn in colorButtons)
+                {
+                    if (btn != null)
+                        btn.interactable = !data.isReady;
                 }
             }
         }

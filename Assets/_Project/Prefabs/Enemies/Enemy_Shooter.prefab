@@ -291,9 +291,9 @@ MonoBehaviour:
   _addedNetworkObject: {fileID: 4322912711510339584}
   _networkObjectCache: {fileID: 4322912711510339584}
   moveSpeed: 2
-  optimalDistance: 7
+  optimalDistance: 6
   tooCloseDistance: 4
-  tooFarDistance: 9
+  tooFarDistance: 8
   shootingRange: 13
   fireRate: 2
   bulletCount: 5

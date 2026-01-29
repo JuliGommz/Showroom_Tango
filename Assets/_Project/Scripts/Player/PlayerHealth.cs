@@ -1,24 +1,40 @@
-﻿/*
+/*
 ====================================================================
-* PlayerHealth.cs - Player Health & Death System
+* PlayerHealth - Player Health & Death System
 ====================================================================
 * Project: Showroom_Tango
-* Course: PRG - Game & Multimedia Design SRH Hochschule
-* Developer: Julian Gomez
+* Course: Game & Multimedia Design
+* Developer: Julian
 * Date: 2025-01-15
 * Version: 1.0
 * 
 * ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
 * 
 * [HUMAN-AUTHORED]
-* - Death behavior: Spectate until both players dead
-* - Visual feedback: SetActive(false)
-* - Max HP: 100
+* - Death behavior (spectate until both players dead)
+* - Visual feedback (hide sprites, keep colliders)
+* - Max HP (100)
 * 
 * [AI-ASSISTED]
-* - NetworkBehaviour implementation
-* - Server-authority death handling
 * - SyncVar HP tracking
+* - Server-authority death handling
+* - Game over check logic
+* 
+* [AI-GENERATED]
+* - NetworkBehaviour FishNet implementation
+* - Complete reset system
+* 
+* DEPENDENCIES:
+* - FishNet.Object (NetworkBehaviour, SyncVar)
+* 
+* NOTES:
+* - Dead players remain in scene as spectators
+* - Sprites hidden but colliders active
+* - Game over triggers when all players dead
 ====================================================================
 */
 
@@ -39,14 +55,11 @@ public class PlayerHealth : NetworkBehaviour
         base.OnStartServer();
         currentHealth.Value = maxHealth;
         isDead.Value = false;
-        Debug.Log($"[PlayerHealth] {gameObject.name} initialized: HP={currentHealth.Value}/{maxHealth}");
     }
 
     public override void OnStartNetwork()
     {
         base.OnStartNetwork();
-
-        // Subscribe to death state changes
         isDead.OnChange += OnDeathStateChanged;
     }
 
@@ -65,7 +78,6 @@ public class PlayerHealth : NetworkBehaviour
             return;
         }
 
-        int oldHP = currentHealth.Value;
         currentHealth.Value -= damage;
 
         if (currentHealth.Value <= 0)
@@ -73,27 +85,21 @@ public class PlayerHealth : NetworkBehaviour
             currentHealth.Value = 0;
             Die();
         }
-
-        Debug.Log($"[PlayerHealth] {gameObject.name} took {damage} damage. HP: {oldHP} -> {currentHealth.Value}/{maxHealth} (isDead: {isDead.Value})");
     }
 
     [Server]
     private void Die()
     {
         isDead.Value = true;
-        Debug.Log($"[PlayerHealth] {gameObject.name} died!");
-
-        // Check if both players are dead (Game Over condition)
         CheckGameOver();
     }
 
     [Server]
     private void CheckGameOver()
     {
-        // Find all players
         PlayerHealth[] allPlayers = FindObjectsByType<PlayerHealth>(FindObjectsSortMode.None);
-
         bool allDead = true;
+
         foreach (var player in allPlayers)
         {
             if (!player.isDead.Value)
@@ -105,26 +111,23 @@ public class PlayerHealth : NetworkBehaviour
 
         if (allDead)
         {
-            Debug.Log("[PlayerHealth] ALL PLAYERS DEAD - GAME OVER!");
-            // TODO Phase 6: Trigger Game Over screen
+            // Handled by GameStateManager
         }
     }
 
     private void OnDeathStateChanged(bool prev, bool next, bool asServer)
     {
-        if (next) // Player died
+        if (next)
         {
-            // Visual feedback: Hide sprites only (keep colliders active)
+            // Hide sprites for spectator mode
             SpriteRenderer[] sprites = GetComponentsInChildren<SpriteRenderer>();
             foreach (var sprite in sprites)
             {
                 sprite.enabled = false;
             }
-            Debug.Log($"[PlayerHealth] {gameObject.name} visual hidden (spectating)");
         }
     }
 
-    // Public getters
     public int GetCurrentHealth() => currentHealth.Value;
     public int GetMaxHealth() => maxHealth;
     public bool IsDead() => isDead.Value;
@@ -136,13 +139,10 @@ public class PlayerHealth : NetworkBehaviour
         currentHealth.Value = maxHealth;
         isDead.Value = false;
 
-        // Re-enable sprites
         SpriteRenderer[] sprites = GetComponentsInChildren<SpriteRenderer>();
         foreach (var sprite in sprites)
         {
             sprite.enabled = true;
         }
-
-        Debug.Log($"[PlayerHealth] {gameObject.name} health reset to {maxHealth}");
     }
 }

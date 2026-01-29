@@ -1,26 +1,34 @@
 /*
 ====================================================================
-* HighscoreUI.cs - Top 10 Highscore Leaderboard Display
+* HighscoreUI - Top 10 Highscore Leaderboard Display
 ====================================================================
 * Project: Showroom_Tango
-* Course: PRG - Game & Multimedia Design SRH Hochschule
-* Developer: Julian Gomez
+* Course: PRG - Game & Multimedia Design
+* Developer: Julian
 * Date: 2025-01-27
 * Version: 1.0
-*
-* WICHTIG: KOMMENTIERUNG NICHT LOESCHEN!
-*
+* 
+* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
+* 
 * [HUMAN-AUTHORED]
 * - Top 10 leaderboard requirement
 * - Display on GameOver/Victory panels
-*
+* 
 * [AI-ASSISTED]
 * - UnityWebRequest callback integration
 * - Dynamic UI row generation
-*
+* 
 * [AI-GENERATED]
 * - Complete UI display logic
-*
+* 
+* DEPENDENCIES:
+* - TMPro (TextMeshPro)
+* - HighscoreManager (backend integration)
+* 
 * SETUP:
 * 1. Attach to a GameObject inside GameOver/Victory panel
 * 2. Assign highscoreListText (a TextMeshProUGUI element)
@@ -68,9 +76,9 @@ public class HighscoreUI : MonoBehaviour
             return;
         }
 
-        // Build formatted text for the leaderboard
+        // Format leaderboard display
         System.Text.StringBuilder sb = new System.Text.StringBuilder();
-        sb.AppendLine("<b>--- TOP 10 HIGHSCORES ---</b>");
+        sb.AppendLine("--- TOP 10 HIGHSCORES ---");
         sb.AppendLine();
 
         for (int i = 0; i < entries.Count && i < 10; i++)
@@ -79,14 +87,13 @@ public class HighscoreUI : MonoBehaviour
             string name = entries[i].playerName;
             string score = entries[i].score.ToString("N0");
 
-            // Truncate long names
+            // Truncate long names for display
             if (name.Length > 15) name = name.Substring(0, 15) + "..";
 
-            sb.AppendLine($"{rank}.  {name.PadRight(18)} {score.PadLeft(8)}");
+            sb.AppendLine($"{rank}. {name.PadRight(18)} {score.PadLeft(8)}");
         }
 
         DisplayFallbackText(sb.ToString());
-        Debug.Log($"[HighscoreUI] Displayed {entries.Count} highscore entries");
     }
 
     private void DisplayFallbackText(string text)

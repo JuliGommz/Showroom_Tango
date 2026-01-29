@@ -2,14 +2,14 @@
 ====================================================================
 * CameraFollow - Cinemachine Camera Target Assignment
 ====================================================================
-* Project: Showroom_Tango (2-Player Top-Down Bullet-Hell)
-* Course: PRG - Game & Multimedia Design
+* Project: Showroom_Tango
+* Course: Game & Multimedia Design
 * Developer: Julian
-* Date: 18.12.2025
+* Date: 2025-12-18
 * Version: 1.0
 * 
-* WICHTIG: KOMMENTIERUNG NICHT LOESCHEN!
-* Diese detaillierte Authorship-Dokumentation ist fuer die akademische
+* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
 * Bewertung erforderlich und darf nicht entfernt werden!
 * 
 * AUTHORSHIP CLASSIFICATION:
@@ -22,19 +22,17 @@
 * - NetworkBehaviour pattern
 * - Virtual Camera target assignment
 * - Null-safety checks
-* - Academic header formatting
 * 
 * [AI-GENERATED]
-* - None
+* - Complete implementation
 * 
 * DEPENDENCIES:
-* - FishNet.Object.NetworkBehaviour (FishNet package)
-* - Unity.Cinemachine (Cinemachine package)
+* - FishNet.Object (NetworkBehaviour)
+* - Unity.Cinemachine (CinemachineCamera)
 * 
 * NOTES:
 * - Attached to Player Prefab
 * - Only owner's camera follows their player
-* - Uses Cinemachine Virtual Camera for smooth follow
 * - Non-owners ignore camera assignment
 ====================================================================
 */
@@ -48,18 +46,13 @@ public class CameraFollow : NetworkBehaviour
     public override void OnStartClient()
     {
         base.OnStartClient();
-        
-        // Only set camera target for owner
+
         if (!IsOwner) return;
-        
-        // Find the Cinemachine Virtual Camera in scene
+
         CinemachineCamera virtualCamera = FindFirstObjectByType<CinemachineCamera>();
-        
         if (virtualCamera != null)
         {
-            // Set this player as the camera's follow target
             virtualCamera.Follow = transform;
-            Debug.Log($"Camera now following owner player: {gameObject.name}");
         }
         else
         {

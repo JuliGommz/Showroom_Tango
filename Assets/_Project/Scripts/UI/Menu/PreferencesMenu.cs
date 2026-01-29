@@ -1,11 +1,49 @@
+/*
+====================================================================
+* PreferencesMenu - Audio Preferences UI Controller
+====================================================================
+* Project: Showroom_Tango
+* Course: PRG - Game & Multimedia Design
+* Developer: Julian
+* Date: 2026-01-28
+* Version: 1.0
+* 
+* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
+* 
+* [HUMAN-AUTHORED]
+* - Volume slider controls (Master, Music, SFX)
+* - Test SFX button concept
+* - Reset to defaults functionality
+* 
+* [AI-ASSISTED]
+* - CanvasGroup visibility pattern
+* - Event listener cleanup during LoadSettings
+* - Percentage label formatting
+* 
+* [AI-GENERATED]
+* - Complete UI controller implementation
+* 
+* DEPENDENCIES:
+* - TMPro (TextMeshPro)
+* - UnityEngine.UI (Slider, CanvasGroup)
+* - AudioSettings (persistent audio data)
+* - GameAudioManager (optional SFX fallback)
+* 
+* NOTES:
+* - Integrates with AudioSettings singleton for persistence
+* - Event listeners removed/re-added during LoadSettings to prevent feedback loops
+* - Optional test SFX with fallback to GameAudioManager
+====================================================================
+*/
+
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Preferences Menu UI Controller
-/// Author: Julian Gomez | SRH Hochschule Heidelberg | January 28, 2026
-/// </summary>
 public class PreferencesMenu : MonoBehaviour
 {
     [Header("References")]
@@ -51,6 +89,7 @@ public class PreferencesMenu : MonoBehaviour
 
     private void LoadSettings()
     {
+        // Prevent feedback loops during value assignment
         masterVolumeSlider.onValueChanged.RemoveAllListeners();
         musicVolumeSlider.onValueChanged.RemoveAllListeners();
         sfxVolumeSlider.onValueChanged.RemoveAllListeners();

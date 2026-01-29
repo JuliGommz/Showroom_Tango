@@ -1,23 +1,42 @@
-﻿/*
+/*
 ====================================================================
-* EnemyHealth.cs - Enemy Health & Death System
+* EnemyHealth - Enemy Health & Death System
 ====================================================================
 * Project: Showroom_Tango
-* Course: PRG - Game & Multimedia Design SRH Hochschule
-* Developer: Julian Gomez
+* Course: Game & Multimedia Design
+* Developer: Julian
 * Date: 2025-01-14
 * Version: 1.0
 * 
 * ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
 * 
 * [HUMAN-AUTHORED]
-* - Health values (Chaser: 30 HP, Shooter: 20 HP)
-*
+* - Health values (Chaser: 30 HP, Shooter: 50 HP set in prefab)
+* - Score value (10 points per kill)
+* 
 * [AI-ASSISTED]
-* - NetworkBehaviour implementation
 * - Server-authority damage pattern
-* - Death event system
-* - FishNet despawn logic
+* - Spawn protection (500ms invulnerability)
+* - Score attribution logic (player kills vs kamikaze)
+* 
+* [AI-GENERATED]
+* - NetworkBehaviour FishNet implementation
+* - SyncVar for networked health synchronization
+* - ScoreManager integration
+* - FishNet despawn pattern
+* 
+* DEPENDENCIES:
+* - FishNet.Object (NetworkBehaviour, SyncVar)
+* - ScoreManager (score tracking and attribution)
+* 
+* NOTES:
+* - Spawn protection prevents instant despawn during network init
+* - Supports both player kills and kamikaze deaths
+* - Team score awarded even for non-player kills
 ====================================================================
 */
 
@@ -28,17 +47,16 @@ using FishNet.Object.Synchronizing;
 public class EnemyHealth : NetworkBehaviour
 {
     [Header("Health Settings")]
-    [SerializeField] private int maxHealth = 30; // Default: Chaser=30, Shooter=50 (set in prefab)
+    [SerializeField] private int maxHealth = 30;
 
     [Header("Score Value")]
     [SerializeField] private int scoreValue = 10;
 
     private readonly SyncVar<int> currentHealth = new SyncVar<int>();
-
-    // Spawn protection to prevent instant despawn during network initialization
     private bool isInitialized = false;
     private float spawnTime;
-    private const float SPAWN_PROTECTION_DURATION = 0.5f; // 500ms invulnerability
+
+    private const float SPAWN_PROTECTION_DURATION = 0.5f;
 
     public override void OnStartServer()
     {
@@ -46,13 +64,12 @@ public class EnemyHealth : NetworkBehaviour
         currentHealth.Value = maxHealth;
         spawnTime = Time.time;
         isInitialized = false;
-        Debug.Log($"[EnemyHealth] {gameObject.name} spawned at {transform.position} with {maxHealth} HP");
     }
 
     public override void OnStartClient()
     {
         base.OnStartClient();
-        // Mark as initialized once network replication is complete
+
         if (!IsServerStarted)
         {
             isInitialized = true;
@@ -61,13 +78,11 @@ public class EnemyHealth : NetworkBehaviour
 
     void Update()
     {
-        // Server: Enable damage after spawn protection period
         if (IsServerStarted && !isInitialized)
         {
             if (Time.time >= spawnTime + SPAWN_PROTECTION_DURATION)
             {
                 isInitialized = true;
-                Debug.Log($"[EnemyHealth] {gameObject.name} spawn protection ended - now vulnerable");
             }
         }
     }
@@ -75,20 +90,12 @@ public class EnemyHealth : NetworkBehaviour
     [Server]
     public void TakeDamage(int damage, GameObject attackerPlayer = null)
     {
-        // Ignore damage during spawn protection
-        if (!isInitialized)
-        {
-            Debug.LogWarning($"[EnemyHealth] {gameObject.name} blocked damage during spawn protection");
-            return;
-        }
+        if (!isInitialized) return;
 
-        int oldHealth = currentHealth.Value;
         currentHealth.Value -= damage;
-        Debug.Log($"[EnemyHealth] {gameObject.name} took {damage} damage: {oldHealth} -> {currentHealth.Value} HP (attacker: {attackerPlayer?.name})");
 
         if (currentHealth.Value <= 0)
         {
-            Debug.Log($"[EnemyHealth] {gameObject.name} died (killer: {attackerPlayer?.name})");
             Die(attackerPlayer);
         }
     }
@@ -96,7 +103,6 @@ public class EnemyHealth : NetworkBehaviour
     [Server]
     private void Die(GameObject killerPlayer = null)
     {
-        // Award score via ScoreManager (attribute to specific player if provided)
         if (ScoreManager.Instance != null)
         {
             if (killerPlayer != null)
@@ -105,9 +111,8 @@ public class EnemyHealth : NetworkBehaviour
             }
             else
             {
-                // Kamikaze/suicide death - still award team score but no individual credit
+                // Kamikaze death - team score only, no individual credit
                 ScoreManager.Instance.AddKillScore(null);
-                Debug.Log("[EnemyHealth] Non-player kill (kamikaze) - team score only");
             }
         }
         else
@@ -115,12 +120,9 @@ public class EnemyHealth : NetworkBehaviour
             Debug.LogWarning("[EnemyHealth] ScoreManager not found - score not awarded");
         }
 
-        Debug.Log($"[EnemyHealth] Enemy died.");
-
         ServerManager.Despawn(gameObject);
     }
 
     public int GetCurrentHealth() => currentHealth.Value;
-
     public int GetMaxHealth() => maxHealth;
 }

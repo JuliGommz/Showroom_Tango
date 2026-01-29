@@ -1,26 +1,43 @@
 /*
 ====================================================================
-* HUDManager.cs - In-Game HUD Display Controller
+* HUDManager - In-Game HUD Display Controller
 ====================================================================
 * Project: Showroom_Tango
-* Course: PRG - Game & Multimedia Design SRH Hochschule
-* Developer: Julian Gomez
+* Course: PRG - Game & Multimedia Design
+* Developer: Julian
 * Date: 2025-01-20
 * Version: 1.0
-*
+* 
 * ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
-*
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
+* 
 * [HUMAN-AUTHORED]
 * - HUD layout concept (HP bars top left/right, score center)
 * - Game Over/Victory screen requirements
-*
+* 
 * [AI-ASSISTED]
 * - Unity UI integration
 * - Event subscription pattern
 * - Dynamic player HP tracking
-*
+* 
 * [AI-GENERATED]
 * - Complete UI update logic
+* 
+* DEPENDENCIES:
+* - TMPro (TextMeshPro)
+* - UnityEngine.UI (Slider)
+* - ScoreManager (team/player scores)
+* - GameStateManager (game state events)
+* - HighscoreManager (leaderboard submission)
+* 
+* NOTES:
+* - Updates player HP 5x per second via InvokeRepeating
+* - Updates wave display every second
+* - Event-driven score updates
+* - Handles game state transitions (Playing -> GameOver/Victory)
 ====================================================================
 */
 
@@ -50,12 +67,10 @@ public class HUDManager : MonoBehaviour
     [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private GameObject victoryPanel;
     [SerializeField] private TextMeshProUGUI finalScoreText;
-    [SerializeField] private UnityEngine.UI.Button restartButton; // For diagnostic validation
+    [SerializeField] private UnityEngine.UI.Button restartButton;
 
     void Start()
     {
-        Debug.Log("[HUDManager] Starting initialization...");
-
         // Subscribe to managers
         if (ScoreManager.Instance != null)
         {
@@ -72,41 +87,27 @@ public class HUDManager : MonoBehaviour
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
         if (victoryPanel != null) victoryPanel.SetActive(false);
 
-        // Validate restart button configuration
+        // Validate restart button configuration (diagnostic only)
         if (restartButton != null)
         {
             int listenerCount = restartButton.onClick.GetPersistentEventCount();
-            Debug.Log($"[HUDManager] ✅ Restart button found with {listenerCount} onClick listeners");
-
             if (listenerCount == 0)
             {
-                Debug.LogWarning("[HUDManager] ⚠️ Restart button has ZERO onClick listeners! Configure in Inspector!");
-            }
-            else
-            {
-                for (int i = 0; i < listenerCount; i++)
-                {
-                    string methodName = restartButton.onClick.GetPersistentMethodName(i);
-                    Object target = restartButton.onClick.GetPersistentTarget(i);
-                    Debug.Log($"[HUDManager] Listener {i}: {target?.name}.{methodName}()");
-                }
+                Debug.LogWarning("[HUDManager] Restart button has ZERO onClick listeners! Configure in Inspector!");
             }
         }
         else
         {
-            Debug.LogWarning("[HUDManager] ⚠️ Restart button reference not assigned in Inspector!");
+            Debug.LogWarning("[HUDManager] Restart button reference not assigned in Inspector!");
         }
 
-        // Start updating player HP
-        InvokeRepeating(nameof(UpdatePlayerHP), 0.5f, 0.2f); // Update 5x per second
-        InvokeRepeating(nameof(UpdateWave), 1f, 1f); // Update every second
-
-        Debug.Log("[HUDManager] Initialization complete");
+        // Start periodic updates
+        InvokeRepeating(nameof(UpdatePlayerHP), 0.5f, 0.2f);
+        InvokeRepeating(nameof(UpdateWave), 1f, 1f);
     }
 
     void OnDestroy()
     {
-        // Unsubscribe from events
         if (ScoreManager.Instance != null)
         {
             ScoreManager.Instance.OnScoreChanged -= UpdateScore;
@@ -134,11 +135,13 @@ public class HUDManager : MonoBehaviour
             Debug.LogWarning("[HUDManager] EnemySpawner not found for wave display");
             return;
         }
+
         if (waveText == null)
         {
             Debug.LogWarning("[HUDManager] waveText not assigned in Inspector!");
             return;
         }
+
         waveText.text = $"WAVE {spawner.GetCurrentWave()} / {spawner.GetMaxWaves()}";
     }
 
@@ -152,7 +155,7 @@ public class HUDManager : MonoBehaviour
         }
         else
         {
-            // No player 1, clear display
+            // Clear player 1 display when absent
             if (player1ScoreText != null) player1ScoreText.text = "Score: 0";
         }
 
@@ -162,7 +165,7 @@ public class HUDManager : MonoBehaviour
         }
         else
         {
-            // No player 2, clear display
+            // Clear player 2 display when absent
             if (player2ScoreText != null) player2ScoreText.text = "Score: 0";
         }
     }
@@ -187,8 +190,6 @@ public class HUDManager : MonoBehaviour
             int maxHP = health.GetMaxHealth();
             float hpRatio = (float)currentHP / maxHP;
 
-            Debug.Log($"[HUDManager] Player: {playerObj.name} | HP: {currentHP}/{maxHP} | Ratio: {hpRatio} | Bar: {hpBar.name}");
-
             hpBar.value = hpRatio;
 
             if (nameText != null && controller != null)
@@ -212,9 +213,11 @@ public class HUDManager : MonoBehaviour
                 if (gameOverPanel != null) gameOverPanel.SetActive(false);
                 if (victoryPanel != null) victoryPanel.SetActive(false);
                 break;
+
             case GameState.GameOver:
                 ShowGameOver();
                 break;
+
             case GameState.Victory:
                 ShowVictory();
                 break;
@@ -250,9 +253,8 @@ public class HUDManager : MonoBehaviour
 
         if (players.Length == 0)
         {
-            // No player objects remain (all dead) - submit with fallback name
+            // Fallback when no player objects remain (all dead)
             HighscoreManager.Instance.SubmitScore("Team", teamScore);
-            Debug.Log($"[HUDManager] Highscore submitted: Team - {teamScore}");
             return;
         }
 
@@ -263,7 +265,6 @@ public class HUDManager : MonoBehaviour
             int individualScore = ScoreManager.Instance.GetPlayerScore(playerObj);
 
             HighscoreManager.Instance.SubmitScore(playerName, individualScore > 0 ? individualScore : teamScore);
-            Debug.Log($"[HUDManager] Highscore submitted: {playerName} - {(individualScore > 0 ? individualScore : teamScore)}");
         }
     }
 
@@ -276,7 +277,7 @@ public class HUDManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Called by Restart button in UI
+    /// Called by Restart button in UI (connected via Inspector)
     /// </summary>
     public void OnRestartButtonPressed()
     {
@@ -284,29 +285,23 @@ public class HUDManager : MonoBehaviour
         Debug.Log("[HUDManager] 🔴 RESTART BUTTON CLICKED!");
         Debug.Log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-        // Direct call to GameStateManager (works even when players are dead)
         if (GameStateManager.Instance != null)
         {
-            Debug.Log($"[HUDManager] ✅ GameStateManager found: {GameStateManager.Instance.name}");
-            Debug.Log("[HUDManager] 📡 Calling RequestRestartServerRpc()...");
-
             GameStateManager.Instance.RequestRestartServerRpc();
-
-            Debug.Log("[HUDManager] ✅ ServerRpc call completed - waiting for server response");
         }
         else
         {
-            Debug.LogError("[HUDManager] ❌ GameStateManager.Instance is NULL! Cannot restart!");
+            Debug.LogError("[HUDManager] GameStateManager.Instance is NULL! Cannot restart!");
 
-            // Attempt to find it manually
+            // Attempt manual recovery
             GameStateManager found = FindAnyObjectByType<GameStateManager>();
             if (found != null)
             {
-                Debug.LogWarning($"[HUDManager] ⚠️ Found GameStateManager manually: {found.name}, but Instance was null!");
+                Debug.LogWarning($"[HUDManager] Found GameStateManager manually: {found.name}, but Instance was null!");
             }
             else
             {
-                Debug.LogError("[HUDManager] ❌ GameStateManager doesn't exist in scene at all!");
+                Debug.LogError("[HUDManager] GameStateManager doesn't exist in scene at all!");
             }
         }
     }

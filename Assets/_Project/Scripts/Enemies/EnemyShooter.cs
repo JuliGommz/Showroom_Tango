@@ -1,22 +1,49 @@
-﻿/*
+/*
 ====================================================================
-* EnemyShooter.cs - Ranged Enemy AI
+* EnemyShooter - Ranged Enemy AI
 ====================================================================
 * Project: Showroom_Tango
-* Developer: Julian Gomez
+* Course: Game & Multimedia Design
+* Developer: Julian
 * Date: 2025-01-14
 * Version: 1.0
 * 
+* ⚠️ WICHTIG: KOMMENTIERUNG NICHT LÖSCHEN! ⚠️
+* Diese detaillierte Authorship-Dokumentation ist für die akademische
+* Bewertung erforderlich und darf nicht entfernt werden!
+* 
+* AUTHORSHIP CLASSIFICATION:
+* 
 * [HUMAN-AUTHORED]
-* - Keep distance behavior (5-7 units optimal)
-* - Shooting interval (2 seconds)
+* - Keep distance behavior (optimal: 6 units, too close: 4, too far: 10)
+* - Shooting interval (2.5 seconds)
 * - Movement speed (2 units/second, slower than Chaser)
+* - Combat parameters (5 bullets, 10 damage, 8 speed, 15 range)
+* 
+* [AI-ASSISTED]
+* - Patrol system when in optimal range
+* - Target update optimization (0.5s intervals)
+* - Spawn protection (0.5s invulnerability)
+* 
+* [AI-GENERATED]
+* - NetworkBehaviour FishNet implementation
+* - 360° star pattern bullet spawning
+* - BulletPool integration
+* 
+* DEPENDENCIES:
+* - FishNet.Object (NetworkBehaviour)
+* - BulletPool (object pooling)
+* - PlayerHealth (target validation)
+* - EnemySpawner (bullet pool reference)
+* 
+* NOTES:
+* - Patrols when in optimal range to avoid predictable behavior
+* - Backs away if player too close, advances if too far
 ====================================================================
 */
 
 using UnityEngine;
 using FishNet.Object;
-using System.Collections;
 
 public class EnemyShooter : NetworkBehaviour
 {
@@ -25,7 +52,7 @@ public class EnemyShooter : NetworkBehaviour
     [SerializeField] private float optimalDistance = 6f;
     [SerializeField] private float tooCloseDistance = 4f;
     [SerializeField] private float tooFarDistance = 10f;
-    [SerializeField] private float shootingRange = 15f; // Max range to shoot at player
+    [SerializeField] private float shootingRange = 15f;
 
     [Header("Combat Settings")]
     [SerializeField] private float fireRate = 2.5f;
@@ -38,20 +65,15 @@ public class EnemyShooter : NetworkBehaviour
     private Rigidbody2D rb;
     private float lastFireTime;
     private BulletPool bulletPool;
-
-    // Spawn protection
     private bool isInitialized = false;
     private float spawnTime;
-    private const float SPAWN_PROTECTION_DURATION = 0.5f;
-
-    // Targeting optimization
     private float targetUpdateTimer = 0f;
-    private const float TARGET_UPDATE_INTERVAL = 0.5f; // Re-evaluate target every 0.5 seconds
-
-    // Patrol behavior
     private Vector2 patrolTarget;
     private float patrolTimer = 0f;
-    private const float PATROL_CHANGE_INTERVAL = 3f; // Change patrol direction every 3 seconds
+
+    private const float SPAWN_PROTECTION_DURATION = 0.5f;
+    private const float TARGET_UPDATE_INTERVAL = 0.5f;
+    private const float PATROL_CHANGE_INTERVAL = 3f;
 
     void Awake()
     {
@@ -61,13 +83,11 @@ public class EnemyShooter : NetworkBehaviour
     public override void OnStartServer()
     {
         base.OnStartServer();
-        Debug.Log($"[EnemyShooter] Spawned with fireRate={fireRate}, bulletCount will be 5");
         spawnTime = Time.time;
         isInitialized = false;
         FindNearestPlayer();
-        PickNewPatrolTarget(); // Start with random patrol direction
+        PickNewPatrolTarget();
 
-        // Get enemy bullet pool from spawner
         EnemySpawner spawner = FindAnyObjectByType<EnemySpawner>();
         if (spawner != null)
         {
@@ -83,7 +103,6 @@ public class EnemyShooter : NetworkBehaviour
     {
         if (!IsServerStarted) return;
 
-        // Enable AI after spawn protection
         if (!isInitialized)
         {
             if (Time.time >= spawnTime + SPAWN_PROTECTION_DURATION)
@@ -92,11 +111,10 @@ public class EnemyShooter : NetworkBehaviour
             }
             else
             {
-                return; // Skip AI logic during spawn protection
+                return;
             }
         }
 
-        // Performance optimization: Re-evaluate target periodically instead of every frame
         targetUpdateTimer += Time.fixedDeltaTime;
         if (targetUpdateTimer >= TARGET_UPDATE_INTERVAL)
         {
@@ -104,13 +122,12 @@ public class EnemyShooter : NetworkBehaviour
             FindNearestPlayer();
         }
 
-        // Also check if current target is dead
         if (targetPlayer != null)
         {
             PlayerHealth health = targetPlayer.GetComponent<PlayerHealth>();
             if (health != null && health.IsDead())
             {
-                targetPlayer = null; // Force re-targeting
+                targetPlayer = null;
                 FindNearestPlayer();
             }
         }
@@ -128,7 +145,6 @@ public class EnemyShooter : NetworkBehaviour
     private void FindNearestPlayer()
     {
         GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
-
         if (players.Length == 0) return;
 
         float closestDistance = Mathf.Infinity;
@@ -136,7 +152,6 @@ public class EnemyShooter : NetworkBehaviour
 
         foreach (GameObject player in players)
         {
-            // Skip dead players
             PlayerHealth health = player.GetComponent<PlayerHealth>();
             if (health != null && health.IsDead()) continue;
 
@@ -154,23 +169,18 @@ public class EnemyShooter : NetworkBehaviour
     private void HandleMovement()
     {
         float distance = Vector2.Distance(transform.position, targetPlayer.position);
-
         Vector2 direction;
 
-        // Back away if player gets too close
         if (distance < tooCloseDistance)
         {
             direction = (transform.position - targetPlayer.position).normalized;
         }
-        // Move closer if player is too far
         else if (distance > tooFarDistance)
         {
             direction = (targetPlayer.position - transform.position).normalized;
         }
-        // PATROL MODE: Move freely when in optimal range
         else
         {
-            // Update patrol target periodically
             patrolTimer += Time.fixedDeltaTime;
             if (patrolTimer >= PATROL_CHANGE_INTERVAL)
             {
@@ -178,10 +188,8 @@ public class EnemyShooter : NetworkBehaviour
                 PickNewPatrolTarget();
             }
 
-            // Move toward patrol target
             direction = (patrolTarget - rb.position).normalized;
 
-            // If close to patrol target, pick a new one
             if (Vector2.Distance(rb.position, patrolTarget) < 1f)
             {
                 PickNewPatrolTarget();
@@ -194,7 +202,6 @@ public class EnemyShooter : NetworkBehaviour
 
     private void PickNewPatrolTarget()
     {
-        // Pick random direction and distance for patrol
         float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
         float distance = Random.Range(2f, 5f);
         Vector2 offset = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * distance;
@@ -207,51 +214,38 @@ public class EnemyShooter : NetworkBehaviour
         if (bulletPrefab == null) return;
         if (targetPlayer == null) return;
 
-        // Only shoot if player is in shooting range
         float distance = Vector2.Distance(transform.position, targetPlayer.position);
         if (distance > shootingRange) return;
 
         lastFireTime = Time.time;
 
-        // Fire bullets in 360° star pattern (evenly distributed)
         float angleStep = 360f / bulletCount;
-
         for (int i = 0; i < bulletCount; i++)
         {
-            // Calculate angle for this bullet (evenly distributed around 360°)
             float angle = i * angleStep;
             float angleInRadians = angle * Mathf.Deg2Rad;
             Vector2 bulletDirection = new Vector2(Mathf.Cos(angleInRadians), Mathf.Sin(angleInRadians));
 
-            // Calculate rotation for bullet sprite
             float bulletAngle = Mathf.Atan2(bulletDirection.y, bulletDirection.x) * Mathf.Rad2Deg;
             Quaternion bulletRotation = Quaternion.Euler(0, 0, bulletAngle - 90f);
 
             GameObject bullet;
 
-            // Use pool if available, otherwise fallback to instantiate
             if (bulletPool != null)
             {
                 bullet = bulletPool.GetBullet(transform.position, bulletRotation);
             }
             else
             {
-                // Fallback: Instantiate and spawn directly (no pooling)
                 bullet = Instantiate(bulletPrefab, transform.position, bulletRotation);
                 ServerManager.Spawn(bullet);
             }
 
-            // Initialize bullet
             Bullet bulletScript = bullet.GetComponent<Bullet>();
             if (bulletScript != null)
             {
-                bulletScript.Initialize(bulletPool); // Pass pool reference (null if not using pool)
+                bulletScript.Initialize(bulletPool);
             }
-
-            // Note: Bullet movement is handled by Bullet.cs FixedUpdate using transform.up
-            // The rotation (bulletRotation) determines the direction
         }
-
-        Debug.Log($"[EnemyShooter] Fired {bulletCount}-bullet 360° star pattern");
     }
 }
