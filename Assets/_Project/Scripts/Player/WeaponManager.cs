@@ -5,7 +5,7 @@
 * Project: Showroom_Tango
 * Developer: Julian Gomez
 * Date: 2025-01-08
-* Version: 1.0
+* Version: 1.1 - Fixed projectile spawn offset (now uses local space)
 * 
 * [HUMAN-AUTHORED]
 * - 3-weapon slot limitation
@@ -112,8 +112,9 @@ public class WeaponManager : NetworkBehaviour
             GameObject target = GetTargetForWeapon(i, enemiesInRange);
             if (target == null) continue;
 
-            // Calculate fire position with offset
-            Vector3 firePosition = playerTransform.position + (Vector3)weapon.firePointOffset;
+            // Calculate fire position with offset (rotated to player's local space)
+            Vector3 rotatedOffset = playerTransform.TransformDirection(weapon.firePointOffset);
+            Vector3 firePosition = playerTransform.position + rotatedOffset;
 
             // Calculate direction to target with angle offset
             Vector2 directionToTarget = (target.transform.position - firePosition).normalized;

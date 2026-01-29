@@ -3,69 +3,86 @@
 **Developer:** Julian Gomez
 **Course:** PRG - Game & Multimedia Design, SRH Hochschule Heidelberg
 **Technology:** Unity 6000.0.62f1 + FishNet 4.x Networking
-**Submission Date:** 23.01.2026
+**Version:** v1.6
+**Last Updated:** 2026-01-28
 
 ---
 
 ## Kurzbeschreibung
 
-Showroom Tango ist ein kooperativer Top-Down Bullet-Hell-Shooter für 2 Spieler. Beide Spieler kämpfen gemeinsam gegen 5 Wellen von Gegnern auf einem geteilten Bildschirm. Das Spiel features automatisches Zielsystem mit bis zu 3 Waffen, Neon-Retrofuturistik-Ästhetik, und netzwerkbasiertes Multiplayer über FishNet.
+Showroom Tango ist ein kooperativer Top-Down Bullet-Hell-Shooter fuer 2 Spieler. Beide Spieler kaempfen gemeinsam gegen 3 Wellen von Gegnern auf einem geteilten Bildschirm. Das Spiel features automatisches Zielsystem mit bis zu 3 Waffen, Neon-Retrofuturistik-Aesthetik, und netzwerkbasiertes Multiplayer ueber FishNet.
 
 ---
 
 ## Anleitung zum Starten
 
 ### Host Starten:
-1. Unity öffnen und Spiel-Scene laden
-2. Play drücken
-3. Im Netzwerk-Menü auf "Host" klicken
-4. Warten bis Client verbindet
-5. Spiel startet automatisch nach 3 Sekunden
+1. Unity oeffnen und `Menue.unity` Scene laden
+2. Play druecken
+3. Auf "Start Game" klicken
+4. Im Lobby als "Host" verbinden
+5. Spielername eingeben und "Ready" druecken
+6. Warten bis Client verbindet und auch "Ready" ist
+7. Spiel startet automatisch nach 3 Sekunden Countdown
 
 ### Client Verbinden:
-1. Zweite Unity-Instanz öffnen (oder Build starten)
-2. Play drücken
-3. Im Netzwerk-Menü auf "Client" klicken
-4. Verbindung wird automatisch zu localhost hergestellt
-5. Spiel startet sobald Host bereit ist
+1. Zweite Unity-Instanz oeffnen (oder Build starten)
+2. Play druecken
+3. Auf "Start Game" klicken
+4. Im Lobby als "Client" verbinden (localhost)
+5. Spielername eingeben und "Ready" druecken
+6. Spiel startet sobald beide Spieler bereit sind
 
 **Steuerung:**
 - WASD: Bewegung
 - Maus: Rotation
-- Waffen: Auto-Fire (automatisch auf nächste Gegner)
+- Waffen: Auto-Fire (automatisch auf naechste Gegner)
 
 ---
 
-## Technischer Überblick
+## Technischer Ueberblick
+
+### Architektur (Single-Scene Pattern)
+
+Das Spiel verwendet ein Single-Scene-Architektur ab Game.unity:
+```
+Menue.unity -> LoadScene("Game") -> Game.unity
+                                    |-- LobbyRoot (aktiv waehrend Lobby)
+                                    +-- GameRoot (aktiv waehrend Playing)
+```
+
+GameStateManager steuert die Sichtbarkeit der Root-Objekte basierend auf dem aktuellen Spielzustand.
 
 ### Verwendete RPCs
-
-**PlayerController.cs:**
-- `SetPlayerNameServerRpc(string name)` - Setzt Spielernamen synchron
-- `TakeDamageServerRpc(int damage)` - Schaden auf Server anwenden
 
 **WeaponManager.cs:**
 - `FireWeaponServerRpc(Vector3 position, Quaternion rotation, string bulletSpriteName)` - Schuss auf Server spawnen
 
 **GameStateManager.cs:**
-- `RequestRestartServerRpc()` - Spiel-Neustart anfordern
+- `RequestRestartServerRpc()` - Spiel-Neustart anfordern (zurueck zu Lobby)
 
-**ScoreManager.cs:**
-- `AddScoreServerRpc(int points)` - Score hinzufügen (optional, primär server-seitig)
+**LobbyManager.cs:**
+- `SetPlayerReadyServerRpc(NetworkConnection, bool)` - Ready-Status setzen
+- `SetPlayerNameServerRpc(NetworkConnection, string)` - Spielernamen setzen
+- `SetPlayerColorServerRpc(NetworkConnection, int)` - Spielerfarbe setzen
+
+**PlayerHealth.cs:**
+- `ApplyDamage(int)` - Server-Authority Schadenssystem
+
+**EnemySpawner.cs:**
+- `NotifyWaveClearedObserversRpc(int)` - Wave-Clear Benachrichtigung an alle Clients
 
 ### Verwendete SyncVars
 
-**PlayerController.cs:**
-- `SyncVar<string> playerName` - Spielername
-- `SyncVar<int> currentHP` - Aktuelle Lebenspunkte
-- `SyncVar<Color> playerColor` - Spielerfarbe
-
 **PlayerHealth.cs:**
-- `SyncVar<int> currentHealth` - Gesundheit
+- `SyncVar<int> currentHealth` - Aktuelle Lebenspunkte
 - `SyncVar<bool> isDead` - Tod-Status
 
 **EnemyHealth.cs:**
 - `SyncVar<int> currentHealth` - Gegner-Gesundheit
+
+**EnemySpawner.cs:**
+- `SyncVar<int> currentWave` - Aktuelle Welle (1-3)
 
 **GameStateManager.cs:**
 - `SyncVar<GameState> currentState` - Spielzustand (Lobby, Playing, GameOver, Victory)
@@ -73,20 +90,23 @@ Showroom Tango ist ein kooperativer Top-Down Bullet-Hell-Shooter für 2 Spieler.
 **ScoreManager.cs:**
 - `SyncVar<int> teamScore` - Team-Punktestand
 
+**LobbyManager.cs:**
+- `SyncDictionary<NetworkConnection, PlayerLobbyData>` - Lobby-Daten aller Spieler
+
 ### Bullet-Logik
 
 **Pooling-System:**
-- BulletPool verwaltet 1000 Bullets in Queue
+- BulletPool verwaltet Bullets in Queue (separate Pools fuer Player/Enemy)
 - Server spawnt Bullets via ServerManager.Spawn()
-- Auto-Expansion bei Pool-Erschöpfung
-- Bullets werden nach 5s Lifetime oder Collision zurück in Pool
+- Auto-Expansion bei Pool-Erschoepfung
+- Bullets werden nach 5s Lifetime oder Collision zurueck in Pool
 - DespawnType.Pool verhindert Destroy (Objekte bleiben erhalten)
 
-**Schießsystem:**
-- WeaponManager: Auto-Fire auf bis zu 3 nächste Gegner
-- Prioritäts-Targeting: Waffe 1 → nächster Gegner, Waffe 2 → 2.-nächster, etc.
-- Server-Authority: Alle Schüsse spawnen auf Server
-- Fire-Rate Upgrades via WeaponConfig
+**Schiesssystem:**
+- WeaponManager: Auto-Fire auf bis zu 3 naechste Gegner
+- Prioritaets-Targeting: Waffe 1 -> naechster Gegner, Waffe 2 -> 2.-naechster, etc.
+- Server-Authority: Alle Schuesse spawnen auf Server
+- Fire-Rate konfigurierbar via WeaponConfig ScriptableObjects
 
 **Synchronisation:**
 - NetworkTransform synchronisiert Bullet-Position
@@ -96,40 +116,59 @@ Showroom Tango ist ein kooperativer Top-Down Bullet-Hell-Shooter für 2 Spieler.
 ### Gegner-Logik
 
 **Enemy-Typen:**
-- **EnemyChaser:** Verfolgt nächsten Spieler, 30 HP, Kamikaze-Schaden (20 HP)
-- **EnemyShooter:** Hält Distanz, schießt Bullets, 20 HP
+- **EnemyChaser:** Verfolgt naechsten Spieler, Kamikaze-Schaden
+- **EnemyShooter:** Haelt Distanz, schiesst auf Spieler
 
 **Spawning:**
 - EnemySpawner (Server-only)
-- 5 Waves: 15 → 25 → 40 → 60 → 100 Gegner
+- 3 Waves: 60 -> 67 -> 107 Gegner
 - 70% Chaser, 30% Shooter
-- Burst-Spawn (30%) + Trickle-Spawn (70% über 60s)
-- Spawn-Position: Kreis mit 12 Units Radius
-
-**AI:**
-- Chaser: Vector2.MoveTowards zu nächstem Spieler
-- Shooter: Distance-Check + Fire-Rate 1-2s (implementierung ausstehend)
-- Server-seitige Bewegung, NetworkTransform synchronisiert
+- Gleichmaessiges Trickle-Spawn ueber 45s pro Wave
+- Spawn-Position: Kreisfoermig am Rand (33 Units Radius)
 
 **Wave-System:**
-- Victory-Condition: Wave 5 komplett + alle Gegner tot
-- Wave-Clear-Bonus: +50 Punkte via ScoreManager
-- GameStateManager prüft Conditions in Update()
+- Victory-Condition: Wave 3 komplett + alle Gegner tot
+- ObserversRpc benachrichtigt Clients bei Wave-Clear
+- GameStateManager prueft Conditions in Update()
+
+---
+
+## Audio System (v1.6)
+
+Das Audio-System verwendet einen persistenten Singleton:
+
+```
+GameAudioManager (DontDestroyOnLoad)
+|-- Music Tracks: Menu, Lobby, Gameplay
+|-- SFX: Button clicks
+|-- States: Menu -> Lobby -> Playing
++-- Volume: Via AudioSettings.cs (PlayerPrefs)
+```
+
+**AudioSettings.cs:**
+- Statische Utility-Klasse fuer Volume-Persistenz
+- Master, Music, SFX Volumes
+- PlayerPrefs Speicherung
+
+**PreferencesMenu.cs:**
+- 3 Sliders (Master, Music, SFX)
+- Echtzeit Volume-Anpassung
+- CanvasGroup Visibility Pattern
 
 ---
 
 ## Persistenz
 
-### PHP/SQL Backend (Primär - Pflichtanforderung)
+### PHP/SQL Backend (Primaer - Pflichtanforderung)
 
 **Setup:**
 1. XAMPP installieren (Apache + MySQL)
 2. Datenbank erstellen: `bullethell_scores`
-3. SQL-Script ausführen: `Documentation/PHP_Backend/database_setup.sql`
+3. SQL-Script ausfuehren: `Documentation/PHP_Backend/database_setup.sql`
 4. PHP-Files kopieren nach: `C:/xampp/htdocs/bullethell/`
 
 **Files:**
-- `submit_score.php` - POST: player_name, score → INSERT in DB
+- `submit_score.php` - POST: player_name, score -> INSERT in DB
 - `get_highscores.php` - GET: Return Top 10 als JSON
 - `database_setup.sql` - CREATE TABLE highscores
 
@@ -144,46 +183,47 @@ Showroom Tango ist ein kooperativer Top-Down Bullet-Hell-Shooter für 2 Spieler.
 
 ### JSON Fallback (Notfall)
 
-Falls PHP/SQL nicht verfügbar:
+Falls PHP/SQL nicht verfuegbar:
 - HighscoreManager Inspector: `useJSONFallback = true`
 - Speichert in: `Application.persistentDataPath/highscores.json`
 - Lokale Top-10-Liste, sortiert nach Score
 
-**Vollständige Setup-Anleitung:** `Documentation/PHP_Backend/README_BACKEND_SETUP.txt`
+**Vollstaendige Setup-Anleitung:** `Documentation/PHP_Backend/README_BACKEND_SETUP.txt`
 
 ---
 
 ## Bonusfeatures
 
 ### Implementiert:
-- **Neon-Glow Visual System:** Dual-Sprite-Technik mit Outline-Glow (NeonGlowController)
+- **Lobby System:** Spieler-Setup mit Namen, Farbe, Ready-Status (SyncDictionary)
+- **Story Popup:** Lore/Hintergrundgeschichte im Menue
+- **Preferences Menu:** Volume-Einstellungen mit Persistenz
+- **Neon-Glow Visual System:** Dual-Sprite-Technik mit Outline-Glow
 - **Multi-Weapon Auto-Fire:** Brotato-inspiriertes Waffensystem mit 3 Slots
 - **Menu Polish:** Hover-Effekte, Audio-Controller, Video-Background
+- **PHP/SQL Highscore:** Persistente Online-Highscores
 
-### Geplant (nicht implementiert):
+### Nicht Implementiert:
 - Power-Ups (Shield, Fire-Rate Boost)
 - Komplexe Bullet-Patterns (Spiral, Ring, Homing)
-- Erweiterte VFX/SFX
+- Schwierigkeitsauswahl
 
 ---
 
 ## Bekannte Bugs
 
-### Kritisch (Beheben vor Abgabe):
-- ❌ **HUD UI nicht verbunden:** HUDManager.cs erstellt, aber Unity Canvas fehlt noch
-- ❌ **PHP Backend nicht deployed:** Lokales Setup erforderlich
-- ❌ **GameStateManager nicht in Scene:** Prefab/GameObject fehlt
+### Offen (TIER 1):
+- **Wave Transition UI:** Countdown zwischen Wellen erscheint nicht auf Clients
+- **Projectile Spawn Position:** Bullets spawnen hinter Spieler statt vorne
 
-### Minor:
-- ⚠️ EnemyShooter schießt noch nicht (nur Movement implementiert)
-- ⚠️ WeaponManager benötigt BulletPool-Zuweisung im Inspector (Preflight-Check fehlt)
-- ⚠️ Player2 HP-Bar zeigt manchmal falschen Spieler (Race-Condition bei Spawn)
+### Offen (TIER 2):
+- **Build UI Displacement:** Menu-Buttons verschoben in Build-Version
+- **Umlaute Bug:** ae, oe, ue werden nicht korrekt dargestellt
 
-### Testing-Status:
-- ✅ Host-Client Verbindung funktioniert
-- ✅ Player Movement synchronisiert
-- ✅ Enemy Spawning funktioniert
-- ⚠️ End-to-End Playthrough ausstehend (HUD fehlt)
+### Geloest (v1.6):
+- Highscore Namen zeigen "Player" -> Behoben via initialer Name-Send
+- Preferences Popup erscheint nicht -> CanvasGroup Integration behoben
+- Audio Redundanz -> Konsolidiert zu einzelnem GameAudioManager
 
 ---
 
@@ -191,25 +231,28 @@ Falls PHP/SQL nicht verfügbar:
 
 ```
 Assets/_Project/
-├── Scripts/
-│   ├── Enemies/          # EnemyChaser, EnemyShooter, EnemyHealth, EnemySpawner
-│   ├── Gameflow/         # GameStateManager, ScoreManager (NEU)
-│   ├── Network/          # PlayerSpawner, NetworkUIManager
-│   ├── Player/           # PlayerController, PlayerHealth, WeaponManager, CameraFollow
-│   ├── Projectiles/      # Bullet, BulletPool
-│   ├── UI/               # HUDManager (NEU), MenuAudioController, ButtonHover
-│   └── Persistence/      # HighscoreManager (NEU)
-├── Prefabs/
-│   ├── Player/
-│   ├── Enemies/
-│   └── Projectiles/
-└── Scenes/
+|-- Scripts/
+|   |-- Enemies/           # EnemyChaser, EnemyShooter, EnemyHealth, EnemySpawner
+|   |-- Gameflow/          # GameStateManager, ScoreManager, MenuManager, GameAudioManager
+|   |-- Network/           # AutoStartNetwork, NetworkUIManager, PlayerSpawner
+|   |-- Persistence/       # HighscoreManager, AudioSettings
+|   |-- Player/            # PlayerController, PlayerHealth, WeaponManager, CameraFollow
+|   |-- Projectiles/       # Bullet, BulletPool
+|   |-- UI/
+|   |   |-- Root/          # HUDManager, HighscoreUI, WaveTransitionUI
+|   |   |-- Lobby/         # LobbyManager, LobbyUI, PlayerSetupUI
+|   |   +-- Menu/          # PreferencesMenu, StoryPopup, ButtonHover, SeamlessMenuVideo
+|   +-- Z-Parkplatz/       # Deprecated scripts (safe to delete)
+|-- Prefabs/
+|-- Scenes/
+|   |-- Menue.unity        # Hauptmenue
+|   +-- Game.unity         # Lobby + Spielbereich
 
 Documentation/
-├── PHP_Backend/          # submit_score.php, get_highscores.php, database_setup.sql (NEU)
-├── 01-12.*.txt           # Umfassende Projekt-Dokumentation
-└── GDD_*.md/txt          # Game Design Documents
-
+|-- PHP_Backend/           # submit_score.php, get_highscores.php, database_setup.sql
+|-- GameDesignDocument.md  # Aktuelle Architektur (v1.6)
+|-- OpenTasks_Prioritized.md # Bug-Tracking und Tasks
++-- _Archive/              # Alte Session-Logs
 ```
 
 ---
@@ -218,10 +261,9 @@ Documentation/
 
 - **ADR-001:** Wave-System statt Boss (Einfacher, weniger Risiko)
 - **ADR-002:** Object-Pooling ab Tag 1 (Performance)
+- **ADR-003:** Single-Scene Architecture (Lobby + Game in einer Scene)
 - **ADR-007:** Unity New Input System (Zukunftssicher)
-- **ADR-009:** Server-Authority für alle Gameplay-Logik (Anti-Cheat)
-
-**Vollständige ADRs:** `Documentation/04.Architecture_Desitions.txt`
+- **ADR-009:** Server-Authority fuer alle Gameplay-Logik (Anti-Cheat)
 
 ---
 
@@ -231,6 +273,7 @@ Documentation/
 - Spielkonzept, Mechanik-Design, Werte-Balancing
 - Unity Szenen-Setup, Prefab-Erstellung
 - Visual Design (Neon-Aesthetic)
+- Anforderungsdefinition
 
 **AI-Assisted:**
 - Networking-Code (FishNet 4.x Integration)
@@ -238,8 +281,9 @@ Documentation/
 - Dokumentationsstruktur
 - PHP/SQL Backend-Integration
 - Code-Kommentare und akademische Header
+- Bug-Analyse und Debugging
 
-**Details:** Jedes Script enthält detailliertes Authorship-Tracking im Header
+**Details:** Jedes Script enthaelt detailliertes Authorship-Tracking im Header
 
 ---
 
@@ -251,6 +295,8 @@ Dieses Projekt wurde im Rahmen des PRG-Moduls an der SRH Hochschule Heidelberg e
 - FishNet Networking (MIT License)
 - Unity Input System (Unity Companion License)
 - TextMeshPro (Unity Package)
+- Kenney Space Shooter Redux (CC0)
+- Electronic Highway Sign Font
 
 ---
 

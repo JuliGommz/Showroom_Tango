@@ -1,7 +1,9 @@
 # Wave Transition Countdown - Setup Guide
 
 ## Overview
-Adds visual countdown between waves: **"NEXT WAVE IN 5... 4... 3... 2... 1..."**
+Adds visual countdown between waves: **"NEXT WAVE IN 3... 2... 1..."**
+
+> **Note (v1.6):** Countdown is 3 seconds to match EnemySpawner wave delay.
 
 ---
 
@@ -55,7 +57,7 @@ Adds visual countdown between waves: **"NEXT WAVE IN 5... 4... 3... 2... 1..."**
 3. Configure script:
    - **Countdown Panel**: Drag `WaveCountdownPanel` GameObject
    - **Countdown Text**: Drag `CountdownText` TextMeshPro component
-   - **Countdown Duration**: 5 (matches wave delay)
+   - **Countdown Seconds**: 3 (matches EnemySpawner wave delay)
    - **Text Color**: Magenta RGB(170, 0, 200)
 
 ---
@@ -83,7 +85,7 @@ Adds visual countdown between waves: **"NEXT WAVE IN 5... 4... 3... 2... 1..."**
 
 **Expected Behavior**:
 - Countdown appears after Wave 1 and Wave 2 complete
-- Each number displays for 1 second (5 seconds total)
+- Each number displays for 1 second (3 seconds total)
 - Countdown does NOT appear before Wave 1 (game starts immediately)
 - Countdown does NOT appear after Wave 3 (victory screen should show)
 
@@ -105,8 +107,8 @@ Adds visual countdown between waves: **"NEXT WAVE IN 5... 4... 3... 2... 1..."**
 - Or enable **Auto Size** (adjusts to fit)
 
 ### Change Countdown Duration
-- **WaveTransitionUI → Countdown Duration**: Must match `EnemySpawner` wave delay
-- Current: 5 seconds (don't change unless you also change EnemySpawner)
+- **WaveTransitionUI → Countdown Seconds**: Must match `EnemySpawner` wave delay
+- Current: 3 seconds (don't change unless you also change EnemySpawner line 122)
 
 ---
 
@@ -119,8 +121,8 @@ Adds visual countdown between waves: **"NEXT WAVE IN 5... 4... 3... 2... 1..."**
 - Ensure panel starts hidden (WaveTransitionUI sets this)
 
 **Countdown timing wrong**:
-- Verify Countdown Duration = 5 seconds
-- Check EnemySpawner wave delay hasn't changed
+- Verify Countdown Seconds = 3 (in WaveTransitionUI Inspector)
+- Check EnemySpawner wave delay (line 122, currently 3 seconds)
 
 **Text not visible**:
 - Check text color alpha is 255 (fully opaque)
@@ -135,13 +137,15 @@ Adds visual countdown between waves: **"NEXT WAVE IN 5... 4... 3... 2... 1..."**
 
 ## Technical Details
 
-**How It Works**:
-1. WaveTransitionUI monitors EnemySpawner wave number
-2. When wave increments but isn't active = wave completed
-3. Triggers coroutine to show countdown
+**How It Works (v1.1 - Event-Driven)**:
+1. WaveTransitionUI subscribes to `EnemySpawner.OnWaveCleared` event
+2. EnemySpawner fires event when wave cleared (server + ObserversRpc to clients)
+3. `HandleWaveCleared(clearedWave)` triggers countdown if more waves remain
 4. Each second, updates text: "NEXT WAVE IN X..."
-5. After 5 seconds, hides panel
-6. Next wave starts (EnemySpawner handles timing)
+5. After 3 seconds, hides panel
+6. Next wave starts (EnemySpawner handles timing independently)
+
+**Known Issue (v1.6)**: Countdown may not appear - see `OpenTasks_Prioritized.md` for debug steps.
 
 **No changes to wave timing** - countdown purely visual feedback.
 

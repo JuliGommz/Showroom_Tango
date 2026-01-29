@@ -52,8 +52,9 @@ public class EnemySpawner : NetworkBehaviour
     [SerializeField] [Range(0f, 1f)] private float chaserSpawnWeight = 0.7f; // 70% Chaser, 30% Shooter
     private bool waveActive = false;
 
-    // Event fired when a wave is fully cleared (all enemies dead, not just spawned)
-    public event System.Action<int> OnWaveCleared; // passes the wave number that was cleared
+    // Static event fired when a wave is fully cleared (all enemies dead, not just spawned)
+    // Static ensures all subscribers receive the event regardless of which instance they found
+    public static event System.Action<int> OnWaveCleared; // passes the wave number that was cleared
 
     public override void OnStartServer()
     {
@@ -111,9 +112,12 @@ public class EnemySpawner : NetworkBehaviour
                     break;
             }
             Debug.Log($"[EnemySpawner] Wave {wave} cleared!");
-            // Fire event locally on server
+
+            // Fire event for ALL local listeners (including host's UI)
+            Debug.Log($"[EnemySpawner] Firing OnWaveCleared event for wave {wave}. Subscribers: {(OnWaveCleared != null ? OnWaveCleared.GetInvocationList().Length : 0)}");
             OnWaveCleared?.Invoke(wave);
-            // Notify all clients via RPC
+
+            // Notify all clients via RPC (clients will fire their local event)
             NotifyWaveClearedObserversRpc(wave);
 
             // Delay before next wave (but not after final wave)

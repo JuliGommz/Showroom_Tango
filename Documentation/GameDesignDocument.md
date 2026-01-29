@@ -43,64 +43,80 @@ Survive all 3 waves with at least one player alive.
 
 ## 3. SCRIPT ARCHITECTURE
 
-### Folder Structure (Cleaned January 28, 2026)
+### Folder Structure (Audited January 28, 2026)
 ```
-Assets/_Project/Scripts/
-├── Enemies/
-│   ├── EnemyChaser.cs         - Follow-player AI
-│   ├── EnemyHealth.cs         - Server-authoritative HP
-│   ├── EnemyShooter.cs        - Ranged AI with bullets
-│   └── EnemySpawner.cs        - Wave system + ObserversRpc
+Assets/_Project/Scripts/ (36 scripts, 5,762 lines total)
 │
-├── Gameflow/
-│   ├── GameStateManager.cs    - Lobby/Playing state machine
-│   ├── MenuManager.cs         - Menu scene controller
-│   ├── ScoreManager.cs        - Score tracking (SyncVar)
-│   └── GameAudioManager.cs    - DontDestroyOnLoad audio singleton
+├── Enemies/ (4 scripts, 833 lines)
+│   ├── EnemyChaser.cs         - NetworkBehaviour: Follow-player AI
+│   ├── EnemyHealth.cs         - NetworkBehaviour: Server-authoritative HP + SyncVar
+│   ├── EnemyShooter.cs        - NetworkBehaviour: Ranged AI with bullets
+│   └── EnemySpawner.cs        - NetworkBehaviour: Wave system + SyncVar + ObserversRpc
 │
-├── Network/
-│   ├── AutoStartNetwork.cs    - FishNet auto-host
-│   ├── NetworkUIManager.cs    - Connection UI
-│   └── PlayerSpawner.cs       - Player instantiation
+├── Gameflow/ (4 scripts, 683 lines)
+│   ├── GameStateManager.cs    - NetworkBehaviour: State machine (Lobby/Playing/GameOver/Victory)
+│   ├── MenuManager.cs         - MonoBehaviour: Menu scene controller
+│   ├── ScoreManager.cs        - NetworkBehaviour: SyncVar + SyncDictionary
+│   └── GameAudioManager.cs    - MonoBehaviour: DontDestroyOnLoad singleton
 │
-├── Persistence/
-│   ├── HighscoreManager.cs    - PHP/SQL communication
-│   └── AudioSettings.cs       - PlayerPrefs volume persistence
+├── Network/ (3 scripts, 424 lines)
+│   ├── AutoStartNetwork.cs    - MonoBehaviour: FishNet auto-host (dev tool)
+│   ├── NetworkUIManager.cs    - MonoBehaviour: Connection UI buttons
+│   └── PlayerSpawner.cs       - MonoBehaviour: Player instantiation + lobby data
 │
-├── Player/
-│   ├── CameraFollow.cs        - Cinemachine owner tracking
-│   ├── NeonGlowController.cs  - Dual-sprite glow system
-│   ├── PlayerController.cs    - Movement + input
-│   ├── PlayerHealth.cs        - HP system
-│   ├── WeaponConfig.cs        - ScriptableObject weapon data
-│   └── WeaponManager.cs       - Auto-fire multi-weapon
+├── Persistence/ (2 scripts, 310 lines)
+│   ├── HighscoreManager.cs    - MonoBehaviour: PHP/SQL + JSON fallback
+│   └── AudioSettings.cs       - Static class: PlayerPrefs volume persistence
 │
-├── Projectiles/
-│   ├── Bullet.cs              - Projectile behavior
-│   └── BulletPool.cs          - Object pooling
+├── Player/ (6 scripts, 903 lines)
+│   ├── CameraFollow.cs        - NetworkBehaviour: Cinemachine owner tracking
+│   ├── NeonGlowController.cs  - MonoBehaviour: Dual-sprite glow visual
+│   ├── PlayerController.cs    - NetworkBehaviour: Movement + rotation + SyncVars
+│   ├── PlayerHealth.cs        - NetworkBehaviour: HP system + SyncVars
+│   ├── WeaponConfig.cs        - ScriptableObject: Weapon data
+│   └── WeaponManager.cs       - NetworkBehaviour: Auto-fire multi-weapon
 │
-├── UI/
-│   ├── HighscoreUI.cs         - Top 10 display
-│   ├── HUDManager.cs          - HP/Score/Wave display
-│   ├── WaveTransitionUI.cs    - Between-wave countdown
-│   ├── Lobby/
-│   │   ├── LobbyManager.cs    - Player ready system
-│   │   ├── LobbyUI.cs         - Lobby canvas controller
-│   │   └── PlayerSetupUI.cs   - Name/color input panels
-│   └── Menu/
-│       ├── PreferencesMenu.cs - Volume sliders UI
-│       ├── StoryPopup.cs      - Lore display
+├── Projectiles/ (2 scripts, 283 lines)
+│   ├── Bullet.cs              - NetworkBehaviour: Projectile behavior
+│   └── BulletPool.cs          - MonoBehaviour: FishNet object pooling
+│
+├── UI/ (10 scripts total)
+│   ├── HighscoreUI.cs         - MonoBehaviour: Top 10 display (100 lines)
+│   ├── HUDManager.cs          - MonoBehaviour: HP/Score/Wave/GameOver (314 lines)
+│   ├── WaveTransitionUI.cs    - MonoBehaviour: Between-wave countdown (131 lines)
+│   │
+│   ├── Lobby/ (3 scripts, 1,109 lines)
+│   │   ├── LobbyManager.cs    - NetworkBehaviour: SyncDict + countdown + ServerRpc
+│   │   ├── LobbyUI.cs         - MonoBehaviour: Lobby canvas controller
+│   │   └── PlayerSetupUI.cs   - MonoBehaviour: Name/color input panels
+│   │
+│   └── Menu/ (4 scripts, 650 lines)
+│       ├── PreferencesMenu.cs     - MonoBehaviour: Volume sliders UI
+│       ├── StoryPopup.cs          - MonoBehaviour: Lore display
 │       └── Menu-Title/
-│           ├── ButtonHover.cs      - Button effects
-│           └── SeamlessMenuVideo.cs - Background video
+│           ├── ButtonHover.cs     - MonoBehaviour: Hover effects (NO HEADER!)
+│           └── SeamlessMenuVideo.cs - MonoBehaviour: Background video (407 lines)
 │
-└── Z-Parkplatz/               - Deprecated scripts (safe to delete)
-    ├── BootstrapPersist.cs
-    ├── HideOnConnection.cs
-    ├── SceneLoader.cs
-    ├── MenuAudioController.cs  - Replaced by GameAudioManager
-    └── PreferencesManager.cs   - Replaced by PreferencesMenu
+└── Z-Parkplatz/ (5 deprecated scripts, 350 lines) ⚠️ SAFE TO DELETE
+    ├── BootstrapPersist.cs    - Obsolete scene persistence
+    ├── HideOnConnection.cs    - Obsolete UI hide logic
+    ├── SceneLoader.cs         - Obsolete FishNet scene loading
+    ├── MenuAudioController.cs - REPLACED by GameAudioManager
+    └── PreferencesManager.cs  - REPLACED by PreferencesMenu
 ```
+
+### Script Statistics
+| Category | Count | NetworkBehaviour | MonoBehaviour | Other |
+|----------|-------|------------------|---------------|-------|
+| Enemies | 4 | 4 | 0 | 0 |
+| Gameflow | 4 | 2 | 2 | 0 |
+| Network | 3 | 0 | 3 | 0 |
+| Persistence | 2 | 0 | 1 | 1 (static) |
+| Player | 6 | 4 | 1 | 1 (SO) |
+| Projectiles | 2 | 1 | 1 | 0 |
+| UI | 10 | 1 | 9 | 0 |
+| Z-Parkplatz | 5 | 0 | 5 | 0 |
+| **Total** | **36** | **12** | **22** | **2** |
 
 ### Audio System Architecture (v1.6)
 ```
@@ -158,15 +174,27 @@ Menue.unity → LoadScene("Game") → Game.unity
 
 ## 6. KNOWN ISSUES
 
-### Open
-1. **Wave Transition UI** - Not showing on clients (event sync issue)
+### Open - TIER 1 (Grade-Critical)
+1. **Wave Transition UI** - Not showing on clients
+   - Likely cause: Inspector refs (countdownPanel/countdownText) not assigned
+   - Code pattern is correct (event + ObserversRpc)
+   - Debug: Check console for "not assigned" errors
+
 2. **Projectile spawn position** - Bullets spawn behind player
+   - Root cause: firePointOffset applied in world space, not local
+   - Fix location: WeaponManager.cs line 116
+   - Required: `playerTransform.TransformDirection(offset)`
+
+### Open - TIER 2
 3. **Build UI displacement** - Menu buttons offset in build
+4. **Umlaute bug** - ae/oe/ue encoding issues
+5. **ButtonHover.cs missing header** - No academic header block
 
 ### Resolved (v1.6)
 - Highscore names showing "Player" → Fixed via initial name send
 - Preferences popup not showing → Fixed CanvasGroup integration
 - Audio redundancy → Consolidated to single GameAudioManager
+- README.md outdated → Updated to v1.6 with correct architecture
 
 ---
 
@@ -189,6 +217,14 @@ Menue.unity → LoadScene("Game") → Game.unity
 ---
 
 ## 8. VERSION HISTORY
+
+### v1.6.1 (January 28, 2026)
+- Full codebase audit: 36 scripts, 5,762 lines analyzed
+- Header compliance review: 22 complete, 10 partial, 4 missing
+- Bug root cause analysis documented for Wave UI + Projectile spawn
+- README.md completely rewritten to match v1.6 architecture
+- GDD updated with script statistics and line counts
+- OpenTasks updated with detailed debugging steps
 
 ### v1.6 (January 28, 2026)
 - Audio system consolidated (GameAudioManager with DontDestroyOnLoad)

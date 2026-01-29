@@ -6,7 +6,7 @@
 * Course: PRG - Game & Multimedia Design
 * Developer: Julian
 * Date: 2025-01-22
-* Version: 1.1 - Event-driven wave detection (replaces polling)
+* Version: 1.2 - Static event subscription (fixes instance mismatch bug)
 *
 * WICHTIG: KOMMENTIERUNG NICHT LOESCHEN!
 * Diese detaillierte Authorship-Dokumentation ist fuer die akademische
@@ -53,8 +53,6 @@ public class WaveTransitionUI : MonoBehaviour
     [SerializeField] private int countdownSeconds = 3;
     [SerializeField] private Color textColor = new Color(0.667f, 0f, 0.784f, 1f); // Magenta
 
-    private EnemySpawner enemySpawner;
-
     void Start()
     {
         if (countdownPanel == null)
@@ -77,54 +75,52 @@ public class WaveTransitionUI : MonoBehaviour
 
     void OnEnable()
     {
-        StartCoroutine(SubscribeWhenReady());
+        // Subscribe to static event - works regardless of which EnemySpawner instance fires it
+        EnemySpawner.OnWaveCleared += HandleWaveCleared;
+        Debug.Log("[WaveTransitionUI] Subscribed to EnemySpawner.OnWaveCleared (static event)");
     }
 
     void OnDisable()
     {
-        if (enemySpawner != null)
-        {
-            enemySpawner.OnWaveCleared -= HandleWaveCleared;
-        }
-    }
-
-    private IEnumerator SubscribeWhenReady()
-    {
-        // Wait for EnemySpawner to exist
-        while (enemySpawner == null)
-        {
-            enemySpawner = FindAnyObjectByType<EnemySpawner>();
-            if (enemySpawner != null)
-            {
-                enemySpawner.OnWaveCleared += HandleWaveCleared;
-                Debug.Log("[WaveTransitionUI] Subscribed to EnemySpawner.OnWaveCleared");
-                yield break;
-            }
-            yield return new WaitForSeconds(0.5f);
-        }
+        EnemySpawner.OnWaveCleared -= HandleWaveCleared;
+        Debug.Log("[WaveTransitionUI] Unsubscribed from EnemySpawner.OnWaveCleared");
     }
 
     private void HandleWaveCleared(int clearedWave)
     {
-        if (enemySpawner == null) return;
+        Debug.Log($"[WaveTransitionUI] HandleWaveCleared called! Wave {clearedWave} cleared.");
+
+        // Find EnemySpawner to get max waves (static event doesn't give us instance)
+        EnemySpawner spawner = FindAnyObjectByType<EnemySpawner>();
+        int maxWaves = spawner != null ? spawner.GetMaxWaves() : 3; // Default to 3 if not found
+
+        Debug.Log($"[WaveTransitionUI] clearedWave={clearedWave}, maxWaves={maxWaves}");
 
         // Only show countdown if there are more waves
-        if (clearedWave < enemySpawner.GetMaxWaves())
+        if (clearedWave < maxWaves)
         {
+            Debug.Log($"[WaveTransitionUI] Starting countdown for wave {clearedWave + 1}");
             StartCoroutine(ShowCountdown(clearedWave + 1));
+        }
+        else
+        {
+            Debug.Log("[WaveTransitionUI] Final wave cleared - no countdown needed");
         }
     }
 
     private IEnumerator ShowCountdown(int nextWave)
     {
+        Debug.Log($"[WaveTransitionUI] ShowCountdown started for wave {nextWave}");
         countdownPanel.SetActive(true);
 
         for (int i = countdownSeconds; i > 0; i--)
         {
             countdownText.text = $"NEXT WAVE IN {i}...";
+            Debug.Log($"[WaveTransitionUI] Countdown: {i}");
             yield return new WaitForSeconds(1f);
         }
 
         countdownPanel.SetActive(false);
+        Debug.Log("[WaveTransitionUI] Countdown complete, panel hidden");
     }
 }
